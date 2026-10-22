@@ -1,0 +1,6 @@
+const fs=require('node:fs'),path=require('node:path'),{execFileSync}=require('node:child_process')
+const root=path.resolve(__dirname,'..')
+if(process.platform!=='win32')throw Error('The current desktop build requires Windows x64.')
+for(const script of ['build-brand-assets.cjs','build-disclaimer.cjs','build-native.cjs','build-lan-agent.cjs','build-bridge.cjs'])execFileSync(process.execPath,[path.join(__dirname,script)],{cwd:root,stdio:'inherit',windowsHide:true})
+fs.copyFileSync(path.join(root,'bridge/dist/kamucl-bridge-1.0.1.jar'),path.join(root,'out/main/kamucl-bridge.jar'))
+execFileSync(process.execPath,[path.join(root,'native-launcher/scripts/build.cjs')],{cwd:root,stdio:'inherit',windowsHide:true})

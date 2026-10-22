@@ -1,0 +1,54 @@
+[
+  {
+    "key": "builtin:landscape-07c317b750b9f6d5f5b7",
+    "title": "雾中山城",
+    "file": "landscape-07c317b750b9f6d5f5b7.webp",
+    "author": "影视飓风",
+    "derivation": "原图等比压缩",
+    "position": "center 80%",
+    "source": "影视飓风",
+    "sourceUrl": "https://www.ysjf.com/material",
+    "license": "影视飓风素材许可；独立于启动器软件许可，保留原图署名",
+    "sha256": "b8d20454acd831a4000b826c8c848dd4076d20b0937055fbdf63da1d6897af54",
+    "optional": true
+  },
+  {
+    "key": "builtin:landscape-2595334fcf62e77ca93a",
+    "title": "雪山与云海",
+    "file": "landscape-2595334fcf62e77ca93a.webp",
+    "author": "影视飓风",
+    "derivation": "原图等比压缩",
+    "position": "center 50%",
+    "source": "影视飓风",
+    "sourceUrl": "https://www.ysjf.com/material",
+    "license": "影视飓风素材许可；独立于启动器软件许可，保留原图署名",
+    "sha256": "bf0139cb7f4d7a9b54185723e62e5727f0b78fbc3e550ed58e49da7ab9febdd0",
+    "optional": true
+  },
+  {
+    "key": "builtin:landscape-d3670bdf043ca142edd7",
+    "title": "岩石间的白鼬",
+    "file": "landscape-d3670bdf043ca142edd7.webp",
+    "author": "影视飓风",
+    "derivation": "原图等比压缩",
+    "position": "center 55%",
+    "source": "影视飓风",
+    "sourceUrl": "https://www.ysjf.com/material",
+    "license": "影视飓风素材许可；独立于启动器软件许可，保留原图署名",
+    "sha256": "126be7e9f758c5647275f4274d8a8d6115810d50c115e52b4f0d25f037774b2b",
+    "optional": true
+  },
+  {
+    "key": "builtin:landscape-8191bdd06f4245182fce",
+    "title": "旋转楼梯",
+    "file": "landscape-8191bdd06f4245182fce.webp",
+    "author": "影视飓风",
+    "derivation": "使用 ARW 内嵌高分辨率 JPEG 预览，原片保留",
+    "position": "center 50%",
+    "source": "影视飓风",
+    "sourceUrl": "https://www.ysjf.com/material",
+    "license": "影视飓风素材许可；独立于启动器软件许可，保留原图署名",
+    "sha256": "6732db73ef5d503ad82954b48d2903b8820215e69316338202df1546d56e09a1",
+    "optional": true
+  }
+]

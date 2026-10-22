@@ -1,0 +1,291 @@
+{
+  "version": "0.2.1",
+  "measuredAt": "2026-10-21T11:37:23.287Z",
+  "units": "bytes; decimal MB = bytes / 1,000,000",
+  "installedBytes": 320661058,
+  "installedGroups": [
+    {
+      "category": "Electron runtime",
+      "bytes": 288194199
+    },
+    {
+      "category": "Notices + documentation",
+      "bytes": 20545513
+    },
+    {
+      "category": "Application + dependencies + assets",
+      "bytes": 11921346
+    }
+  ],
+  "largestInstalled": [
+    {
+      "name": "ZeroDistance.exe",
+      "bytes": 246070784
+    },
+    {
+      "name": "LICENSES.chromium.html",
+      "bytes": 20472830
+    },
+    {
+      "name": "resources.pak",
+      "bytes": 12435445
+    },
+    {
+      "name": "icudtl.dat",
+      "bytes": 10876560
+    },
+    {
+      "name": "resources/app.asar",
+      "bytes": 10867188
+    },
+    {
+      "name": "vk_swiftshader.dll",
+      "bytes": 5520384
+    },
+    {
+      "name": "d3dcompiler_47.dll",
+      "bytes": 4741488
+    },
+    {
+      "name": "ffmpeg.dll",
+      "bytes": 3113472
+    },
+    {
+      "name": "chrome_200_percent.pak",
+      "bytes": 1269017
+    },
+    {
+      "name": "resources/app.asar.unpacked/node_modules/@koromix/koffi-win32-x64/win32_x64/koffi.node",
+      "bytes": 1036800
+    },
+    {
+      "name": "vulkan-1.dll",
+      "bytes": 939008
+    },
+    {
+      "name": "v8_context_snapshot.bin",
+      "bytes": 742208
+    },
+    {
+      "name": "chrome_100_percent.pak",
+      "bytes": 719654
+    },
+    {
+      "name": "locales/zh-CN.pak",
+      "bytes": 592116
+    }
+  ],
+  "asarBytes": 10867188,
+  "bundledGroups": [
+    {
+      "category": "out/main",
+      "bytes": 5250773
+    },
+    {
+      "category": "out/renderer",
+      "bytes": 3312281
+    },
+    {
+      "category": "node_modules/@koromix/koffi-win32-x64",
+      "bytes": 1039184
+    },
+    {
+      "category": "node_modules/undici",
+      "bytes": 926175
+    },
+    {
+      "category": "Photographs",
+      "bytes": 717084
+    },
+    {
+      "category": "node_modules/koffi",
+      "bytes": 159757
+    },
+    {
+      "category": "node_modules/ws",
+      "bytes": 135660
+    },
+    {
+      "category": "node_modules/adm-zip",
+      "bytes": 127074
+    },
+    {
+      "category": "node_modules/@iarna/toml",
+      "bytes": 67182
+    },
+    {
+      "category": "Notices + configuration",
+      "bytes": 60536
+    },
+    {
+      "category": "Icons + other images",
+      "bytes": 24224
+    },
+    {
+      "category": "out/preload",
+      "bytes": 1000
+    }
+  ],
+  "largestBundled": [
+    {
+      "name": "out/main/ipc-CxoBW5dI.js",
+      "bytes": 2038304,
+      "unpacked": false
+    },
+    {
+      "name": "out/main/projectionWorker.cjs",
+      "bytes": 1911235,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/SkinsView-6A7d0ObO.js",
+      "bytes": 1202344,
+      "unpacked": false
+    },
+    {
+      "name": "node_modules/@koromix/koffi-win32-x64/win32_x64/koffi.node",
+      "bytes": 1036800,
+      "unpacked": true
+    },
+    {
+      "name": "out/main/index.js",
+      "bytes": 967496,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/index-DGJW7644.js",
+      "bytes": 404749,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/landscape-2595334fcf62e77ca93a-BH_YXO3M.webp",
+      "bytes": 258614,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/runtime-dom.esm-bundler-D2vY6iEQ.js",
+      "bytes": 241753,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/landscape-8191bdd06f4245182fce-DmV7EO1V.webp",
+      "bytes": 179960,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/SettingsView-BjXTQ8Fm.js",
+      "bytes": 153962,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/landscape-d3670bdf043ca142edd7-DRLZfLbE.webp",
+      "bytes": 152254,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/GameView-D5i_MIhn.js",
+      "bytes": 145572,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/landscape-07c317b750b9f6d5f5b7-8-DLuotu.webp",
+      "bytes": 126256,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/FileManager-CxZS2zF7.js",
+      "bytes": 114002,
+      "unpacked": false
+    },
+    {
+      "name": "out/renderer/assets/index-DJ3X9zu1.css",
+      "bytes": 113863,
+      "unpacked": false
+    }
+  ],
+  "zip": {
+    "bytes": 140334023,
+    "largestCompressed": [
+      {
+        "name": "ZeroDistance.exe",
+        "compressed": 109105592,
+        "uncompressed": 246070784,
+        "method": 8
+      },
+      {
+        "name": "resources.pak",
+        "compressed": 12338336,
+        "uncompressed": 12435445,
+        "method": 8
+      },
+      {
+        "name": "icudtl.dat",
+        "compressed": 4827328,
+        "uncompressed": 10876560,
+        "method": 8
+      },
+      {
+        "name": "resources/app.asar",
+        "compressed": 2555887,
+        "uncompressed": 10867188,
+        "method": 8
+      },
+      {
+        "name": "vk_swiftshader.dll",
+        "compressed": 2234123,
+        "uncompressed": 5520384,
+        "method": 8
+      },
+      {
+        "name": "d3dcompiler_47.dll",
+        "compressed": 2207552,
+        "uncompressed": 4741488,
+        "method": 8
+      },
+      {
+        "name": "LICENSES.chromium.html",
+        "compressed": 2119202,
+        "uncompressed": 20472830,
+        "method": 8
+      },
+      {
+        "name": "ffmpeg.dll",
+        "compressed": 1299042,
+        "uncompressed": 3113472,
+        "method": 8
+      },
+      {
+        "name": "chrome_200_percent.pak",
+        "compressed": 1221751,
+        "uncompressed": 1269017,
+        "method": 8
+      },
+      {
+        "name": "chrome_100_percent.pak",
+        "compressed": 694947,
+        "uncompressed": 719654,
+        "method": 8
+      },
+      {
+        "name": "resources/app.asar.unpacked/node_modules/@koromix/koffi-win32-x64/win32_x64/koffi.node",
+        "compressed": 436923,
+        "uncompressed": 1036800,
+        "method": 8
+      },
+      {
+        "name": "vulkan-1.dll",
+        "compressed": 365913,
+        "uncompressed": 939008,
+        "method": 8
+      }
+    ]
+  },
+  "source": {
+    "files": 348,
+    "lines": 54202,
+    "mainFiles": 187,
+    "mainLines": 28229,
+    "electronImports": 59,
+    "ipcHandlers": 257
+  }
+}

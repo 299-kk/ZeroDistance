@@ -1,0 +1,103 @@
+const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto'), assert = require('node:assert/strict'), Zip = require('adm-zip')
+let playwright
+try { playwright = require('playwright') } catch { playwright = require(path.join(process.env.USERPROFILE, '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright')) }
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+async function run() {
+  const root = path.resolve(__dirname, '..'), output = path.join(root, '.qa/fixes-021', crypto.randomUUID()), user = path.join(output, 'user'), game = path.join(output, 'game')
+  const write = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, value) }
+  const fixture = JSON.parse(fs.readFileSync(path.join(root, '.qa/lan-agent-result.json')))
+  const jar = new Zip()
+  for (const name of ['net/minecraft/server/MinecraftServer.class', 'net/minecraft/client/server/IntegratedServer.class']) jar.addFile(name, fs.readFileSync(path.join(fixture.output, 'classes', name)))
+  const ids = ['局域网主机-QA', '26.3-QA-other', '26.3-QA-incompatible'], jsonPath = id => path.join(game, 'versions', id, id + '.json')
+  for (const id of ids) {
+    write(jsonPath(id), JSON.stringify({ id, _mcVersion: '26.3', _gameDir: true, _flattenedAt: '2026-10-21T00:00:00Z', mainClass: 'net.minecraft.client.main.Main', libraries: [] }))
+    write(path.join(game, 'versions', id, id + '.jar'), id === ids[2] ? Buffer.from('not a jar') : jar.toBuffer())
+  }
+  const original = fs.readFileSync(jsonPath(ids[1])), hashJar = () => crypto.createHash('sha256').update(fs.readFileSync(path.join(game, 'versions', ids[0], ids[0] + '.jar'))).digest('hex'), originalJar = hashJar()
+  const account = { id: 'zero-qa-offline', type: 'offline', username: 'ZeroQA', uuid: '12345678123456781234567812345678' }
+  write(path.join(user, 'accounts.json'), JSON.stringify({ accounts: [account], selectedId: account.id }))
+  write(path.join(user, 'settings.json'), JSON.stringify({ configVersion: 1, gameFolderPolicyVersion: 1, gameDir: game, activeFolder: game, folders: [{ name: 'QA', path: game, isDefault: true }], theme: 'transparent', autoUpdate: false }))
+  const env = { ...process.env, ZERO_DISTANCE_DATA_DIR: user, ZERO_DISTANCE_DISCOVERY_ROOTS: '[]' }; delete env.ELECTRON_RUN_AS_NODE
+  const executablePath = process.env.ZERO_DISTANCE_EXECUTABLE || require('electron')
+  const args = [...(process.env.ZERO_DISTANCE_EXECUTABLE ? ['--user-data-dir=' + user, '--no-auto-discovery'] : [root]), '--disable-features=CalculateNativeWinOcclusion', '--disable-renderer-backgrounding']
+  const app = await playwright._electron.launch({ executablePath, args, cwd: root, env, timeout: 60000 })
+  const report = { ok: false, packaged: !!process.env.ZERO_DISTANCE_EXECUTABLE, output, passed: [], errors: [] }
+  try {
+    await require('./electron-consent.cjs')(app)
+    let page
+    for (let i = 0; i < 200; i++) { page = app.windows().find(p => p.url().includes('/index.html')); if (page) break; await delay(100) }
+    assert(page); page.on('pageerror', error => report.errors.push(error.message))
+    await page.locator('.zd-instance').first().waitFor({ timeout: 30000 })
+    await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('/index.html')); window.show(); window.focus() })
+    await page.locator('.zd-instance-select').filter({ hasText: ids[0] }).click()
+    const parent = page.locator('[data-nav="resources"]')
+    const font = locator => locator.locator('.nav-label').evaluate(el => getComputedStyle(el).fontSize)
+    const initialFont = await font(parent)
+    await parent.click()
+    await page.locator('.nav-sub.open').waitFor()
+    assert.equal(initialFont, '13px'); assert.equal(await font(parent), initialFont)
+    const group = page.getByRole('group', { name: '本地资源子菜单' })
+    assert.equal(await group.locator('.nav-sub-item').count(), 9)
+    for (const child of await group.locator('.nav-sub-item').all()) { assert.equal(await font(child), initialFont); assert.equal(await child.locator('.nav-label').evaluate(el => el.scrollWidth <= el.clientWidth), true, 'Resource label must fit without truncation') }
+    assert.equal(await page.locator('.sidebar').evaluate(el => Math.round(el.getBoundingClientRect().width)), 132)
+    const tree = await page.locator('.nav-sub-inner').evaluate(el => ({ border: getComputedStyle(el).borderLeftWidth, indent: getComputedStyle(el).marginLeft }))
+    assert.equal(tree.border, '2px'); assert.equal(tree.indent, '8px')
+    await page.locator('[data-nav="packs"]').click(); await parent.click()
+    await page.waitForFunction(() => document.querySelector('[data-nav="resources"]').getAttribute('aria-expanded') === 'false')
+    await parent.click(); await delay(350)
+    await page.screenshot({ path: path.join(output, '01-resource-tree.png') })
+    report.passed.push('All nine resource children keep the same readable 13px font; indentation, connector and parent state are distinct; collapse works on a child page')
+    const catalog = ['26.3', '26.2', '1.21.11', '1.21.1', '1.20.6', '1.20.1'].map(id => ({ id, type: 'release', url: 'https://piston-meta.mojang.com/fixture', releaseTime: '2026-10-01T00:00:00Z' }))
+    await app.evaluate(({ ipcMain }, catalog) => {
+      for (const [channel, fn] of [['versions:catalog', () => ({ versions: catalog, checkedAt: Date.now(), stale: false })], ['versions:manifest', () => catalog], ['community:search', () => ({ items: [], total: 0, offset: 0, limit: 20 })]]) { ipcMain.removeHandler(channel); ipcMain.handle(channel, fn) }
+    }, catalog)
+    await page.locator('[data-nav="community"]').click()
+    const filter = page.getByLabel('Minecraft 版本筛选', { exact: true }), menu = page.getByRole('listbox', { name: 'Minecraft 版本', exact: true })
+    await filter.fill('26'); await menu.getByRole('button', { name: '26.3', exact: true }).waitFor()
+    assert.equal(await menu.evaluate(el => el.parentElement === document.body), true)
+    assert.equal(await menu.evaluate(el => getComputedStyle(el).opacity), '1')
+    const option = menu.getByRole('button', { name: '26.3', exact: true })
+    assert.equal(await option.evaluate(el => { const r = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)) }), true)
+    assert.equal(await page.locator('.menu-overlay').count(), 0)
+    await page.screenshot({ path: path.join(output, '02-dropdown.png') })
+    await option.click(); assert.equal(await filter.inputValue(), '26.3'); assert.equal(await menu.count(), 0)
+    await filter.fill('26'); await filter.press('ArrowDown'); await filter.press('ArrowDown'); await page.keyboard.press('Escape')
+    assert.equal(await menu.count(), 0)
+    await filter.fill('26'); await menu.waitFor(); await page.locator('h1').click(); assert.equal(await menu.count(), 0)
+    await filter.focus(); await menu.waitFor(); await page.evaluate(() => dispatchEvent(new Event('scroll'))); assert.equal(await menu.count(), 0)
+    report.passed.push('Version menu is opaque, portaled directly to body and hit-testable above cards; selection, keyboard Escape, outside click and external scroll work')
+    await page.locator('[data-nav="friends"]').click()
+    const notice = page.getByRole('dialog', { name: '请先确认主机的验证设置' })
+    await notice.waitFor(); assert((await notice.innerText()).includes('无需另装联机模组'))
+    assert.equal(await notice.getByRole('button', { name: '去下载', exact: true }).count(), 0)
+    await notice.getByLabel('不再提示', { exact: true }).check()
+    await notice.getByRole('button', { name: '打开版本设置', exact: true }).click()
+    const setting = page.locator('[data-ui="instance-center:lan-authentication"]')
+    await setting.waitFor(); assert.equal(await page.locator('#ic-title').innerText(), ids[0])
+    await setting.getByRole('button', { name: '一键关闭正版验证', exact: true }).click()
+    await setting.getByRole('button', { name: '恢复默认验证', exact: true }).waitFor({ timeout: 30000 })
+    assert.equal(JSON.parse(fs.readFileSync(jsonPath(ids[0])))._zeroDistanceLanOffline, true)
+    assert.deepEqual(fs.readFileSync(jsonPath(ids[1])), original); assert.equal(hashJar(), originalJar)
+    assert.equal(fs.existsSync(path.join(game, 'versions', ids[0], 'mods')), false)
+    await page.screenshot({ path: path.join(output, '03-lan-settings.png') })
+    await page.getByLabel('关闭实例管理', { exact: true }).click()
+    await page.locator('[data-nav="home"]').click(); await page.locator('[data-nav="friends"]').click(); await page.locator('.offline-host-guide').waitFor()
+    assert.equal(await notice.count(), 0)
+    assert.equal(JSON.parse(fs.readFileSync(path.join(user, 'settings.json'))).offlineMultiplayerNoticeDismissed, true)
+    await page.reload(); await page.locator('.zd-instance').first().waitFor()
+    await page.locator('[data-nav="friends"]').click(); await page.locator('.offline-host-guide').getByRole('button', { name: '版本设置 →' }).click()
+    await setting.getByRole('button', { name: '恢复默认验证', exact: true }).waitFor()
+    await setting.getByRole('button', { name: '恢复默认验证', exact: true }).click()
+    await setting.getByRole('button', { name: '一键关闭正版验证', exact: true }).waitFor()
+    assert.equal(Object.hasOwn(JSON.parse(fs.readFileSync(jsonPath(ids[0]))), '_zeroDistanceLanOffline'), false)
+    const failed = await page.evaluate(async ({ id, folder }) => window.kamucl.invoke('versions:lanAuthentication', { id, folder }, true).then(() => false, () => true), { id: ids[2], folder: game })
+    assert.equal(failed, true); assert.equal(Object.hasOwn(JSON.parse(fs.readFileSync(jsonPath(ids[2]))), '_zeroDistanceLanOffline'), false)
+    assert.equal(await page.evaluate(() => window.kamucl.invoke('versions:lanAuthentication', { id: '26.3', folder: 'C:\\' }, true).then(() => false, () => true)), true)
+    report.passed.push('Offline notice opens the selected instance settings, saves do-not-show, and retains a discoverable settings entry afterwards')
+    report.passed.push('Real backend preflights and persists the per-version toggle, survives reload and restores defaults; other instance and game JAR stay byte-identical, with no extra mod installed')
+    report.passed.push('Unsupported JAR and unregistered folders are rejected without setting a misleading enabled flag')
+    assert.deepEqual(report.errors, []); report.ok = true
+  } finally { await app.close(); fs.writeFileSync(path.join(root, '.qa/fixes-result-021.json'), JSON.stringify(report, null, 2)) }
+  console.log(JSON.stringify(report, null, 2))
+}
+run().catch(error => { console.error(error); process.exitCode = 1 })

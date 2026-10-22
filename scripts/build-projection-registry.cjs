@@ -1,0 +1,8 @@
+const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict'), { brotliCompressSync, brotliDecompressSync, constants } = require('node:zlib')
+const root = path.resolve(__dirname, '..')
+const source = fs.readFileSync(path.join(root, 'src/main/core/projectionRegistries.json'))
+const compressed = brotliCompressSync(source, { params: { [constants.BROTLI_PARAM_QUALITY]: 11, [constants.BROTLI_PARAM_MODE]: constants.BROTLI_MODE_TEXT } })
+assert.deepEqual(brotliDecompressSync(compressed), source, 'Projection registry must remain byte-identical')
+const directory = path.join(root, 'out/main'); fs.mkdirSync(directory, { recursive: true })
+fs.writeFileSync(path.join(directory, 'projection-registries.json.br'), compressed)
+console.log(`Shared projection registry: ${source.length} -> ${compressed.length} bytes (lossless)`)

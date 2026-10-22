@@ -1,0 +1,192 @@
+{
+  "name": "zero-distance",
+  "productName": "ZeroDistance",
+  "version": "0.3.0",
+  "description": "ZeroDistance · Minecraft Java 启动器",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "test": "tsx --test tests/default-game-folder.test.ts tests/mrpack.test.ts tests/mod-compatibility.test.ts tests/mod-workflow.test.ts tests/frp-manager.test.ts tests/frp-worker.test.ts tests/instance-isolation.test.ts tests/microsoft-tls.test.ts tests/gallery-zero-distance.test.ts tests/library-012.test.ts tests/skin3d-parity.test.ts tests/skin-editor-118.test.ts tests/skin-palette-preferences.test.ts tests/fallback-skin-1066.test.ts tests/consent.test.ts tests/zero-020.test.ts tests/lan-authentication.test.ts",
+    "start": "electron-vite preview",
+    "dist": "npm run dist:win",
+    "dist:win": "npm run build && electron-builder --win nsis --x64 --publish never --config.electronDist=node_modules/electron/dist && node scripts/pack-unpacked-zip.cjs && node scripts/check-windows-deliverables.cjs",
+    "dist:mac": "node scripts/pack-mac.mjs",
+    "dist:all": "node scripts/dist-platform.cjs",
+    "license:check": "node scripts/check-licenses.cjs",
+    "test:core": "tsx --test tests/default-game-folder.test.ts tests/mrpack.test.ts tests/mod-compatibility.test.ts tests/mod-workflow.test.ts tests/frp-manager.test.ts tests/frp-worker.test.ts tests/instance-isolation.test.ts tests/microsoft-tls.test.ts",
+    "test:desktop": "node scripts/smoke-zero-distance.cjs",
+    "postinstall": "node node_modules/electron/install.js",
+    "assets:import": "node scripts/import-landscapes.cjs",
+    "test:gallery": "tsx --test tests/gallery-zero-distance.test.ts",
+    "test:upstream": "tsx --test tests/all.test.ts",
+    "assets:brand": "node scripts/build-brand-assets.cjs",
+    "prebuild": "node scripts/build-brand-assets.cjs && node scripts/build-disclaimer.cjs",
+    "predev": "node scripts/build-brand-assets.cjs && node scripts/build-disclaimer.cjs",
+    "test:gallery:desktop": "node scripts/verify-gallery-zero-distance.cjs",
+    "test:startup": "tsx --test tests/startup.test.ts",
+    "test:library:desktop": "node scripts/verify-library-012.cjs",
+    "test:skin:desktop": "node scripts/verify-skin-animation.cjs",
+    "test:consent:desktop": "node scripts/verify-consent.cjs",
+    "test:release:desktop": "node scripts/verify-release-020.cjs",
+    "test:lan": "node scripts/verify-lan-agent.cjs",
+    "test:lan:mappings": "node scripts/verify-lan-mappings.cjs",
+    "test:fixes:desktop": "node scripts/verify-fixes-021.cjs",
+    "test:size": "tsx --test tests/projection-registry.test.ts",
+    "test:size:desktop": "node scripts/verify-size-022.cjs",
+    "audit:size": "node scripts/audit-size.cjs",
+    "build:native": "node scripts/build-native-preview.cjs",
+    "package:native": "node scripts/package-native-preview.cjs",
+    "check:public": "node scripts/check-publication.cjs",
+    "check:docs": "node scripts/check-docs.cjs"
+  },
+  "build": {
+    "appId": "app.zerodistance.launcher",
+    "productName": "ZeroDistance",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/main/**",
+      "out/preload/**",
+      "out/renderer/**",
+      "package.json",
+      "!out/**/*.map",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "licenses/**",
+      "docs/CORRESPONDING_SOURCE.md"
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "electronLanguages": [
+      "zh-CN",
+      "en-US"
+    ],
+    "asarUnpack": [
+      "out/main/WindowMaterial.exe",
+      "out/main/GameWindowFocus.exe",
+      "out/main/MacGameWindow",
+      "out/main/kamucl-bridge.jar",
+      "out/main/zero-distance-lan-agent.jar"
+    ],
+    "beforePack": "scripts/portable-build-hook.cjs",
+    "afterPack": "scripts/verify-windows-runtime.cjs",
+    "win": {
+      "files": [
+        "out/main/**",
+        "out/preload/**",
+        "out/renderer/**",
+        "package.json",
+        "!out/**/*.map",
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.md",
+        "licenses/**",
+        "docs/CORRESPONDING_SOURCE.md",
+        "!node_modules/koffi/doc{,/**}",
+        "!node_modules/koffi/lib{,/**}",
+        "!node_modules/koffi/vendor{,/**}",
+        "!node_modules/koffi/cnoke.cjs",
+        "!node_modules/undici/docs{,/**}"
+      ],
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "artifactName": "ZeroDistance-${version}-windows-${arch}.${ext}",
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "minimumSystemVersion": "11.0.0",
+      "target": [
+        "zip"
+      ],
+      "category": "public.app-category.games",
+      "icon": "build/icon-512.png",
+      "identity": null,
+      "artifactName": "ZeroDistance-${version}-mac-${arch}.${ext}"
+    },
+    "nsis": {
+      "artifactName": "ZeroDistance-${version}-Setup.exe",
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ZeroDistance",
+      "uninstallDisplayName": "ZeroDistance",
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": [
+        "zh_CN"
+      ],
+      "language": "2052",
+      "runAfterFinish": false
+    },
+    "extraFiles": [
+      {
+        "from": "build/使用声明.txt",
+        "to": "使用声明.txt"
+      },
+      {
+        "from": "build/README-Windows.txt",
+        "to": "README.txt"
+      },
+      {
+        "from": "LICENSE",
+        "to": "LICENSE"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.md",
+        "to": "THIRD_PARTY_NOTICES.md"
+      },
+      {
+        "from": "licenses",
+        "to": "licenses"
+      },
+      {
+        "from": "docs/CORRESPONDING_SOURCE.md",
+        "to": "docs/CORRESPONDING_SOURCE.md"
+      }
+    ]
+  },
+  "dependencies": {
+    "@iarna/toml": "2.2.5",
+    "adm-zip": "^0.6.0",
+    "koffi": "^3.2.1",
+    "undici": "^6.28.0",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^22.9.0",
+    "@types/three": "0.185.0",
+    "@types/ws": "8.18.1",
+    "@types/yauzl": "^3.4.0",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "asar": "^3.2.0",
+    "electron": "44.3.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^2.3.0",
+    "minecraft-data": "3.117.0",
+    "sharp": "^0.35.4",
+    "skinview-utils": "0.7.1",
+    "three": "^0.185.1",
+    "tsx": "^4.23.13",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vue": "^3.5.13",
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/299-kk/ZeroDistance.git"
+  },
+  "homepage": "https://github.com/299-kk/ZeroDistance#readme",
+  "bugs": {
+    "url": "https://github.com/299-kk/ZeroDistance/issues"
+  }
+}
