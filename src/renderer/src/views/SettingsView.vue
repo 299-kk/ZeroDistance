@@ -1082,6 +1082,7 @@ async function onRemovePlugin(p: PluginInfo) {
             </button>
             <span data-ui="SettingsView:cd41281572d3" v-if="updateCheckState === 'latest'" class="upd-latest">已是最新 ✓</span>
           </div>
+          <p class="muted group-hint ai-origin-note">ZeroDistance 的二次开发、迁移、文档及默认背景由 AI 制作；用户提供需求与测试反馈。保留 KAMUCL 上游代码、作者及第三方许可。</p>
           <!-- 检查失败：明确是连不上 GitHub 更新源，并提供重试入口（不再误报「无更新」） -->
           <div data-ui="SettingsView:203842d2f6d4" v-if="updateCheckState === 'failed'" class="upd-row upd-failed-row">
             <span data-ui="SettingsView:5ae61f0d3e62" class="upd-failed-text">你的网络可能无法连接 GitHub，检查更新失败</span>

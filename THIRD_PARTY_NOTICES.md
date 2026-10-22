@@ -69,9 +69,9 @@ EmptyWorkingSet API: https://learn.microsoft.com/windows/win32/api/psapi/nf-psap
 It does not include PCL binaries or unpublished implementations, and is not a
 PCL derivative or an endorsed integration. Existing games are skipped.
 
-## ZeroDistance photographs
+## ZeroDistance generated backgrounds
 
-The default gallery consists of four photographs supplied by the user, including one embedded JPEG preview from an ARW. The user has confirmed that all four are from Mediastorm (影视飓风); gallery credits and source records reflect that attribution and preserve original marks. These photographs remain subject to their own material licenses, separately from the software MIT license. Source and file records: docs/VISUAL_ASSETS.md and src/shared/landscape-images.json. Source page: https://www.ysjf.com/material .
+The four current default voxel landscape backgrounds were generated with OpenAI image_gen for ZeroDistance on 2026-10-22 and compressed to WebP. These are AI-generated illustrations, not official Minecraft screenshots or commissioned photographs. See docs/VISUAL_ASSETS.md, docs/AI_BACKGROUND_PROMPTS.json and licenses/AI-BACKGROUNDS.txt. No rights to third-party names or trademarks are granted. Earlier default photographs are no longer bundled.
 
 The upstream character illustrations, mascot textures and generated ZeroDistance 0.1.0 cover are no longer bundled.
 
@@ -105,6 +105,6 @@ release issues are recorded in docs/LICENSE_REMEDIATION.md. New replacements
 do not retroactively establish permission for older releases.
 
 
-## Public repository photograph policy
+## AI development disclosure
 
-The four user-supplied Mediastorm photographs are not included in the public repository or its corresponding source archives. No redistribution grant has been verified. The metadata and credits remain; clean public builds use the theme background when optional photos are absent. Local user-imported photographs remain subject to their own licenses.
+The ZeroDistance-specific redevelopment, desktop migration, documentation and new backgrounds were produced using AI tools with human requirements and testing feedback. This statement does not attribute KAMUCL or third-party dependencies to AI, replace their licenses, or waive the maintainer responsibility. See docs/AI_PROVENANCE.md.

@@ -46,8 +46,8 @@ jobs:
           name: ZeroDistance-windows-preview
           if-no-files-found: error
           path: |
-            native-launcher/release/ZeroDistance-0.3.0-Setup.exe
-            native-launcher/release/ZeroDistance-0.3.0-windows-x64.zip
-            native-launcher/release/ZeroDistance-0.3.0-source.zip
+            native-launcher/release/ZeroDistance-*-Setup.exe
+            native-launcher/release/ZeroDistance-*-windows-x64.zip
+            native-launcher/release/ZeroDistance-*-source.zip
             native-launcher/release/SHA256SUMS.txt
             native-launcher/release/SIZE.json

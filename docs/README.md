@@ -9,6 +9,7 @@
 | [发布检查](RELEASING.md) | 版本、隐私、素材许可、构建与交付 |
 | [贡献说明](../CONTRIBUTING.md) | Issue、PR、测试及来源要求 |
 | [安全政策](../SECURITY.md) | 私密漏洞报告和敏感信息处理 |
+| [AI 制作说明](AI_PROVENANCE.md) | 二次开发范围、工具、背景生成与维护责任 |
 | [素材说明](VISUAL_ASSETS.md) | 署名、可选本机照片和公开分发范围 |
 | [对应源码](CORRESPONDING_SOURCE.md) | 重建方式和许可证范围 |
 | [使用声明](DISCLAIMER.md) | 软件首次使用时展示的声明文本 |

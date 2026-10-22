@@ -1,6 +1,6 @@
 # ZeroDistance 产品说明
 
-当前版本为 **0.3.0 Preview**，主要支持 Windows 10/11 x64。ZeroDistance 是独立的 Minecraft Java 版启动器，基于 KAMUCL 开发，并参考 Modrinth 与 PCL 的使用流程。项目不代表 Mojang、Microsoft 或参考项目的官方产品。
+当前版本为 **0.3.1 Preview**，主要支持 Windows 10/11 x64。ZeroDistance 是独立的 Minecraft Java 版启动器，基于 KAMUCL 开发，并参考 Modrinth 与 PCL 的使用流程。项目不代表 Mojang、Microsoft 或参考项目的官方产品。
 
 ## 安装与首次使用
 
@@ -44,7 +44,7 @@
 
 默认主题是 0.1.4 的青柠，其余主题和个性化设置保留。“设置 → 外观 → 关闭启动动画”默认不勾选，下次启动生效；系统或应用的减少动态效果设置也会影响动画。
 
-本机素材版使用用户提供的影视飓风照片。公开仓库只保留来源、署名及文件校验记录，未附带照片本体。源码构建缺少照片时显示主题背景，仍可在设置中导入自己有权使用的图片。参见 [素材说明](VISUAL_ASSETS.md)。
+默认提供樱花山谷、雪山湖畔、月下营地、海岸落日四张 AI 生成的方块世界背景，随源码与发行包提供。用户仍可导入自己有权使用的图片，原有自定义图片保留。参见 [素材说明](VISUAL_ASSETS.md) 与 [AI 制作说明](AI_PROVENANCE.md)。
 
 ## 数据、更新和卸载
 

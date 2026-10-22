@@ -1,0 +1,16 @@
+ZeroDistance AI-generated default backgrounds
+
+Files: landscape-ai-cherry-valley.webp, landscape-ai-alpine-lake.webp,
+landscape-ai-night-camp.webp, landscape-ai-coastal-village.webp.
+Generated using OpenAI image_gen on 2026-10-22; no reference images.
+
+To the extent the ZeroDistance project may grant such rights, permission is
+granted to use, copy, modify and redistribute these generated backgrounds,
+including with the source and binary distributions of ZeroDistance.
+The images are provided as-is without warranties. This permission makes no
+claim that AI output is exclusively protectable by copyright in every jurisdiction.
+No license to Minecraft, Mojang, Microsoft or any third-party name, trademark
+or other third-party rights is granted. These are generated illustrations,
+not official Minecraft screenshots or an endorsement.
+
+Provenance and prompts: docs/AI_PROVENANCE.md and docs/AI_BACKGROUND_PROMPTS.json.

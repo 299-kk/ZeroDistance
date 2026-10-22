@@ -67,8 +67,12 @@ test('the asset directory has no old illustrations, mascot textures, or generate
   for (const name of ['zero-world.webp', 'splash-face.png', 'splash-face-32.png']) assert.equal(fs.existsSync(path.join(root, name)), false)
   for (const name of ['piston', 'brewer', 'cannon', 'cactus', 'farmer', 'camp', 'sunset']) assert.equal(fs.existsSync(path.join(root, 'launch', name + '.webp')), false)
   if (fs.existsSync(path.join(root, 'mascot-skins'))) assert.deepEqual(fs.readdirSync(path.join(root, 'mascot-skins')), [])
+  assert.equal(BUILTIN_LAUNCH_IMAGES.length, 4)
   for (const image of BUILTIN_LAUNCH_IMAGES) {
-    assert(image.key.startsWith('builtin:landscape-'))
+    assert(image.key.startsWith('builtin:landscape-ai-'))
+    assert.equal(image.generated, true)
+    assert(image.author?.includes('AI'))
+    assert.equal(image.optional, undefined)
     const file = path.join(root, 'launch', image.file)
     if (!fs.existsSync(file)) {
       assert.equal(image.optional, true, 'Only explicitly optional local photographs may be absent: ' + image.file)

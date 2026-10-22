@@ -10,11 +10,12 @@ export interface LaunchImage {
   license?: string
   sha256?: string
   position?: string
-  /** Optional local photograph; omitted from public source until redistribution is verified. */
+  /** Optional user-supplied asset; generated defaults are required and distributed. */
   optional?: boolean
+  generated?: boolean
 }
 
-/** Source records are public; local photograph files are optional and separately licensed. */
+/** Default AI-generated backgrounds and their public provenance records. */
 export const BUILTIN_LAUNCH_IMAGES: readonly LaunchImage[] = landscapes
 
 export function isBuiltinLaunchImage(key: string): boolean {

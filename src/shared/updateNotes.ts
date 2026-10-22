@@ -1,6 +1,11 @@
 /** ZeroDistance built-in release notes. Upstream history is preserved in docs/upstream. */
 export interface UpdateNote { version: string; date: string; title?: string; summary?: string; phase?: 'preview' | 'validation'; testingNotes?: string[]; changes: string[] }
 export const updateNotes: UpdateNote[] = [{
+  version: '0.3.1', date: '2026-10-22', phase: 'preview', title: '方块世界背景',
+  summary: '内置四张 AI 生成背景，安装程序和 ZIP 可从 GitHub Releases 下载。',
+  changes: ['新增樱花山谷、雪山湖畔、月下营地、海岸落日四张默认背景，随源码和安装包分发。', '替换原默认照片，更新使用声明及素材说明，补充 AI 制作范围和上游来源说明。', '软件关于页面增加 AI 制作说明，保留原有界面、功能及数据兼容。'],
+  testingNotes: ['原生自动更新尚未接入，请下载新版安装程序或完整 ZIP 更新。', '使用声明已更新，升级后需重新阅读三秒并同意。']
+}, {
   version: '0.3.0', date: '2026-10-22', phase: 'preview', title: 'ZeroDistance 0.3.0',
   summary: '统一产品名称与版本号，准备公开源码和开发文档。',
   changes: [

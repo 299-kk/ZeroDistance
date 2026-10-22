@@ -41,8 +41,10 @@ logs/
 *.ARW
 *.arw
 
-# Photographs have separate rights; no repository redistribution grant supplied.
-src/renderer/src/assets/launch/
+# Only reviewed generated defaults belong in the public asset directory.
+!src/renderer/src/assets/launch/
+src/renderer/src/assets/launch/*
+!src/renderer/src/assets/launch/landscape-ai-*.webp
 docs/screenshots/
 docs/validation-1.1.7/**/*.png
 docs/validation-1.1.7/**/*.wav

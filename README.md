@@ -1,17 +1,19 @@
 # ZeroDistance
 
-面向 Windows 的 Minecraft Java 版启动器，基于 [KAMUCL](https://github.com/YUN-SAN3/KAMUCL) 开发。当前版本 **0.3.0 Preview**，从 2026 年 10 月 22 日开始预览测试。
+面向 Windows 的 Minecraft Java 版启动器，基于 [KAMUCL](https://github.com/YUN-SAN3/KAMUCL) 开发。当前版本 **0.3.1 Preview**，从 2026 年 10 月 22 日开始预览测试。
 
 保留原有 Vue 界面、主题、3D 皮肤预览和资源管理体验，使用 C# / .NET Framework 4.8 与系统 WebView2 提供桌面窗口。游戏业务仍通过随附的 Node.js 引擎运行，尚未全部迁移为 C#。发行包不内置 Electron 或 Chromium。
+
+**AI 制作说明：ZeroDistance 的二次开发部分全部由 AI 制作，包括桌面迁移、界面修改、产品文档和新增默认背景；用户提供需求、选择与测试反馈。项目仍包含 KAMUCL 上游代码和第三方依赖，其作者、版权与许可保持不变。**
 
 ## 使用
 
 需要 Windows 10/11 x64、.NET Framework 4.8 和 Microsoft Edge WebView2 Runtime。Java 和游戏文件按需下载。
 
-- ZeroDistance-0.3.0-Setup.exe：安装向导可选择目录，默认创建桌面快捷方式，可取消。
-- ZeroDistance-0.3.0-windows-x64.zip：完整解压后运行 ZeroDistance.exe，请保留随附文件。
+- [ZeroDistance-0.3.1-Setup.exe](https://github.com/299-kk/ZeroDistance/releases/download/v0.3.1/ZeroDistance-0.3.1-Setup.exe)：安装向导可选择目录，默认创建桌面快捷方式，可取消。
+- [ZeroDistance-0.3.1-windows-x64.zip](https://github.com/299-kk/ZeroDistance/releases/download/v0.3.1/ZeroDistance-0.3.1-windows-x64.zip)：完整解压后运行 ZeroDistance.exe，请保留随附文件。
 
-安装包由 [Windows 构建流程](https://github.com/299-kk/ZeroDistance/actions/workflows/build.yml) 生成，测试产物不代表稳定版。首次打开需在前台阅读使用声明满三秒并主动同意。卸载默认删除启动器账号、设置、缓存、日志和软件注册信息，保留游戏与存档。
+安装包可从 [GitHub Releases](https://github.com/299-kk/ZeroDistance/releases) 下载，本地保留同一版本及 SHA-256。预览版仍在测试。首次打开需在前台阅读使用声明满三秒并主动同意；声明更新后需重新同意。卸载默认删除启动器账号、设置、缓存、日志和软件注册信息，保留游戏与存档。
 
 ## 功能
 
@@ -41,7 +43,7 @@ npm run package:native
 
 ## 素材与许可
 
-本机版本中的四张影视飓风照片由用户提供。尚未取得允许在公开仓库再分发的授权证明，因此公开源码和由它生成的安装包不包含照片本体，缺图时显示主题底色。来源、校验和及导入说明见 [视觉素材](docs/VISUAL_ASSETS.md)。本机已导入的照片不受影响。
+默认轮播包含四张 AI 生成的 Minecraft 风格方块世界背景：樱花山谷、雪山湖畔、月下营地、海岸落日。源码和安装包均包含 WebP 文件，合计约 1 MB；不再使用旧默认照片。生成提示、处理方式和校验记录见 [视觉素材](docs/VISUAL_ASSETS.md) 与 [AI 制作说明](docs/AI_PROVENANCE.md)。
 
 保留 KAMUCL 版权与第三方许可。MIT 适用范围见 [LICENSE](LICENSE)，其他组件分别遵循 [第三方声明](THIRD_PARTY_NOTICES.md) 中列出的许可，包括 VoxLink 的 LGPL 条款。Minecraft、Microsoft、Mojang 及素材相关权利归各自权利人所有，本项目不代表这些主体。
 

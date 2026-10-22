@@ -1,7 +1,14 @@
 {
-  "name": "zero-distance-native", "private": true, "version": "0.3.0",
-  "releaseChannel": "preview", "testingStartedAt": "2026-10-22",
+  "name": "zero-distance-native",
+  "private": true,
+  "version": "0.3.1",
+  "releaseChannel": "preview",
+  "testingStartedAt": "2026-10-22",
   "description": "ZeroDistance native desktop migration, original Vue interface",
-  "scripts": { "build": "node scripts/build.cjs", "pack": "node scripts/pack.cjs", "test": "node scripts/verify.cjs" },
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "pack": "node scripts/pack.cjs",
+    "test": "node scripts/verify.cjs"
+  },
   "license": "SEE LICENSE IN ../LICENSE"
 }

@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-10-22",
+  "tool": "OpenAI image_gen built-in tool",
+  "mode": "generate; one independent call per image; no reference images",
+  "processing": "WebP quality 84, effort 6; original dimensions retained",
+  "images": [
+    {
+      "id": "cherry-valley",
+      "prompt": "Use case: stylized-concept. Asset type: production wallpaper for the ZeroDistance Minecraft Java launcher, one finished landscape image, 16:9 wide aspect ratio, ideally 2048x1152. A quiet Minecraft-inspired voxel cherry blossom valley at morning, terraced grass blocks, pink cubic cherry trees and a winding river, distant block mountains in soft mist. Fresh green, pale pink, warm sunlight. Polished detailed voxel game landscape, coherent grid-based cubic geometry, attractive shader-like lighting, natural color grading, no characters. Wide establishing view; lower and central scenery remains recognizable when cropped to a panoramic banner. Keep the left third visually quiet and darker for white UI text, main scenic interest in center and right. Full bleed. No text, no letters, no logos, no watermark, no user interface, no frame, no collage. Create an original scene, do not reproduce an existing screenshot or official promotional image."
+    },
+    {
+      "id": "alpine-lake",
+      "prompt": "Use case: stylized-concept. Asset type: production wallpaper for the ZeroDistance Minecraft Java launcher, one finished landscape image, 16:9 wide aspect ratio, ideally 2048x1152. A Minecraft-inspired voxel alpine landscape with towering stepped snowy mountains, a still turquoise lake, dark spruce forest and a small stone bridge. Crisp afternoon sunlight, cool blue and green palette. Polished detailed voxel game landscape, coherent grid-based cubic geometry, attractive shader-like lighting, natural color grading, no characters. Wide establishing view; lower and central scenery remains recognizable when cropped to a panoramic banner. Keep the left third visually quiet and darker for white UI text, main scenic interest in center and right. Full bleed. No text, no letters, no logos, no watermark, no user interface, no frame, no collage. Create an original scene, do not reproduce an existing screenshot or official promotional image."
+    },
+    {
+      "id": "night-camp",
+      "prompt": "Use case: stylized-concept. Asset type: production wallpaper for the ZeroDistance Minecraft Java launcher, one finished landscape image, 16:9 wide aspect ratio, ideally 2048x1152. A Minecraft-inspired voxel forest campsite under a deep blue starry sky, a small wooden cabin, warm lanterns and a campfire beside a river, moonlight across cubic spruce trees. Calm, inviting, subtle warm light. Polished detailed voxel game landscape, coherent grid-based cubic geometry, attractive shader-like lighting, natural color grading, no characters. Wide establishing view; lower and central scenery remains recognizable when cropped to a panoramic banner. Keep the left third visually quiet and darker for white UI text, main scenic interest in center and right. Full bleed. No text, no letters, no logos, no watermark, no user interface, no frame, no collage. Create an original scene, do not reproduce an existing screenshot or official promotional image."
+    },
+    {
+      "id": "coastal-village",
+      "prompt": "Use case: stylized-concept. Asset type: production wallpaper for the ZeroDistance Minecraft Java launcher, one finished landscape image, 16:9 wide aspect ratio, ideally 2048x1152. A Minecraft-inspired voxel coastal village at sunset, modest block-built wooden houses on a grassy bluff, calm ocean, a distant island, cubic clouds and amber light on stone and wood. Relaxed summer atmosphere. Polished detailed voxel game landscape, coherent grid-based cubic geometry, attractive shader-like lighting, natural color grading, no characters. Wide establishing view; lower and central scenery remains recognizable when cropped to a panoramic banner. Keep the left third visually quiet and darker for white UI text, main scenic interest in center and right. Full bleed. No text, no letters, no logos, no watermark, no user interface, no frame, no collage. Create an original scene, do not reproduce an existing screenshot or official promotional image."
+    }
+  ]
+}
