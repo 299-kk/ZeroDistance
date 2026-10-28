@@ -28,7 +28,7 @@
   "limitations": [
     "One full paired real-network run; CDN nodes and routing vary over time.",
     "This measures asset downloads, not a complete modpack installation or game launch.",
-    "User video reference is PCL installing Mechanomania, with cache state unknown. These figures do not establish twice PCL speed.",
+    "User video reference is PCL installing a modpack, with cache state unknown. These figures do not establish twice PCL speed.",
     "First 120-second baseline and intermediate 180-second run were exploratory and are excluded from this complete-run comparison."
   ]
 }
