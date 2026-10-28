@@ -1,6 +1,6 @@
 # 开发指南与注意事项
 
-本仓库发布 ZeroDistance，当前对外版本为 0.3.2 Preview。`native-launcher/` 是现行桌面实现的源码目录名称；名称保留用于维护，不是产品后缀。旧 Electron 实现保留为参考和兼容工具。
+本仓库发布 ZeroDistance，当前对外版本为 0.3.3 Preview。`native-launcher/` 是现行桌面实现的源码目录名称；名称保留用于维护，不是产品后缀。旧 Electron 实现保留为参考和兼容工具。
 
 ## 环境和首次构建
 

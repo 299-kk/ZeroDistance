@@ -1,6 +1,11 @@
 /** ZeroDistance built-in release notes. Upstream history is preserved in docs/upstream. */
 export interface UpdateNote { version: string; date: string; title?: string; summary?: string; phase?: 'preview' | 'validation'; testingNotes?: string[]; changes: string[] }
 export const updateNotes: UpdateNote[] = [{
+ version: '0.3.3', date: '2026-10-28', phase: 'preview', title: '导入与游戏退出修复',
+ summary: '修复整合包下载的系统代理支持，以及游戏退出后低占用模式未恢复主界面的问题。',
+ changes: ['游戏资源与加载器安装器下载遵循 Windows 系统代理；代理连接失败时尝试直连。', '自动低占用模式跟踪游戏进程，所有游戏退出后自动恢复主界面；手动进入的低占用模式保持手动恢复。', '多开时等待所有游戏结束，联机核心在恢复界面时继续运行。'],
+ testingNotes: ['本版为公开预览测试版。', '已用实际整合包完成隔离导入，并验证 Minecraft 26.3 正常退出后自动恢复；完整游戏内容和公网联机仍需继续验证。', '0.3.2 可通过签名更新升级；下载完成后正常退出启动器，更新会静默应用，下次打开生效。']
+}, {
  version: '0.3.2', date: '2026-10-27', phase: 'preview', title: '内存与在线更新',
  summary: '新增可恢复的低占用模式，减少图片缓存，并接入 GitHub 与备用镜像的签名更新。',
  changes: ['设置 → 行为与登录新增低占用模式，支持手动进入及游戏启动后自动进入（默认关闭）。', '低占用时释放 WebView2 和非核心功能，保留已有联机核心；通过原生小窗口或托盘恢复完整界面。', '轮播只预载当前和下一张图片；设置页使用独立缩略图。', '图片文件改为流式传输，尺寸检查不再将整图转成 PNG/Base64；图片和皮肤缓存按字节限制。', '投影注册表按需解压；最小化后释放可重建缓存并降低 WebView2 内存目标。', '在线更新优先 GitHub Releases，失败后尝试备用镜像；更新清单使用发布签名，下载包核验 SHA-256。', '更新遵循 Windows 系统代理；代理不可用时尝试直连，下载中断可尝试续传并验证完整文件。', '后台下载更新，正常退出后静默替换，下次打开生效，无需重新运行安装程序。', '修补网络与 ZIP 组件漏洞；验证更新助手内置指纹，阻止降级重定向和旧包重放。', '完整目录更新支持安装版和 ZIP 版，替换前备份；文件占用和中断时按日志恢复。'],

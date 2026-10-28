@@ -1066,7 +1066,7 @@ async function onRemovePlugin(p: PluginInfo) {
 
       <div v-show="category === 'general'" class="card group" data-section="low-memory">
         <div class="group-inline"><div><h3 class="group-title">低占用模式</h3><p class="muted group-hint">释放整个浏览器界面，仅保留游戏与正在使用的联机服务；从托盘可恢复主界面。</p></div><button class="btn btn-gold btn-sm" @click="enterLowMemory">立即进入</button></div>
-        <div class="group-inline" style="margin-top:12px"><div><strong>游戏启动后自动进入</strong><p class="muted group-hint">成功启动游戏后切换；编辑或下载任务未完成时会暂缓。与“启动后关闭启动器”互斥。</p></div><label class="switch"><input type="checkbox" aria-label="游戏启动后自动进入低占用模式" :checked="store.settings.lowMemoryAfterLaunch === true" @change="save({lowMemoryAfterLaunch:($event.target as HTMLInputElement).checked, ...(($event.target as HTMLInputElement).checked ? {closeAfterLaunch:false} : {})})"/><span class="switch-ui"></span></label></div>
+        <div class="group-inline" style="margin-top:12px"><div><strong>游戏启动后自动进入</strong><p class="muted group-hint">成功启动游戏后切换，全部游戏退出后恢复主界面；编辑、下载或其他游戏启动未完成时会暂缓。与“启动后关闭启动器”互斥。</p></div><label class="switch"><input type="checkbox" aria-label="游戏启动后自动进入低占用模式" :checked="store.settings.lowMemoryAfterLaunch === true" @change="save({lowMemoryAfterLaunch:($event.target as HTMLInputElement).checked, ...(($event.target as HTMLInputElement).checked ? {closeAfterLaunch:false} : {})})"/><span class="switch-ui"></span></label></div>
       </div>
 
       <!-- 关于与更新 -->

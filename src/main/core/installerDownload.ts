@@ -1,5 +1,5 @@
 import { downloadCandidates, downloadFile, type MirrorPref, type ProgressFn } from './download'
-import { httpFetch } from './httpClient'
+import { downloadFetch } from './downloadFetch'
 import { downloadLimiter } from './downloadLimits'
 
 /** Maven sidecar checksum establishes identity before parallel range transfers. */
@@ -13,7 +13,7 @@ export async function downloadLoaderInstaller(url: string, dest: string, mirror:
     const read = async (checksum: boolean) => {
       const release = await downloadLimiter.acquire(requestSignal)
       try {
-        const res = await httpFetch(checksum ? source + '.sha1' : source, { method: checksum ? 'GET' : 'HEAD', signal: requestSignal })
+        const res = await downloadFetch(checksum ? source + '.sha1' : source, { method: checksum ? 'GET' : 'HEAD', signal: requestSignal })
         if (!res.ok) { await res.body?.cancel(); return undefined }
         if (checksum) return (await res.text()).trim().match(/^([a-f\d]{40})(?:\s|$)/i)?.[1]
         const length = Number(res.headers.get('content-length')); await res.body?.cancel()

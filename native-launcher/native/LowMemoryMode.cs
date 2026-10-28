@@ -11,10 +11,14 @@ internal sealed partial class LauncherWindow {
     NotifyIcon lowMemoryTray;Panel lowMemoryPanel;TaskCompletionSource<bool> lowMemoryReady;
     readonly HashSet<string> lowMemoryLaunches=new HashSet<string>();
     readonly HashSet<string> pendingLowMemoryLaunches=new HashSet<string>();
+    readonly HashSet<string> preparingGames=new HashSet<string>();
+    readonly Dictionary<string,int> gameLaunchPids=new Dictionary<string,int>();
+    readonly Dictionary<int,System.Diagnostics.Process> monitoredGames=new Dictionary<int,System.Diagnostics.Process>();
     bool WantsAutoLowMemory(){try{var settings=Json.Parse(File.ReadAllText(Path.Combine(dataDirectory,"settings.json")));return Json.Bool(settings,"lowMemoryAfterLaunch")&&!Json.Bool(settings,"closeAfterLaunch");}catch{return false;}}
     void LowMemoryState(string phase,bool keepCore){if(qa)try{Json.Atomic(Path.Combine(dataDirectory,"low-memory-state.json"),new{phase=phase,keepCore=keepCore,automatic=lastLowAutomatic,hostPid=System.Diagnostics.Process.GetCurrentProcess().Id,enginePid=backendPaused?0:engine.Pid,windowHandle=Handle.ToInt64().ToString()});}catch{}}
     async Task<object> RequestLowMemory(bool automatic){
         if(lowMemory||lowTransition)return new{ok=true};
+        if(automatic&&preparingGames.Count>0)throw new Exception("仍有游戏正在启动");
         if(!accepted||!isMainPage||dirty||designBusy||mascotPending||busyOwners.Count>0||prefsOwners.Count>0)throw new Exception("请先完成或保存当前编辑，再进入低占用模式");
         var state=await engine.Invoke("__native:lowMemory",new object[0]);
         if(!Json.Bool(state,"ready"))throw new Exception(Json.Str(state,"reason"));
@@ -36,7 +40,7 @@ internal sealed partial class LauncherWindow {
             await Task.Delay(100);GC.Collect();GC.WaitForPendingFinalizers();GC.Collect();
             LowMemoryState("entered",keepCore);
         }catch(Exception error){Log("low-memory",error.ToString());lowMemory=browser.IsDisposed;if(lowMemory)BeginInvoke(new Action(async()=>await RestoreFullInterface()));else engine.Invoke("__native:resumeFull",new object[0]).ContinueWith(t=>{if(t.IsFaulted)Log("low-memory",t.Exception.Message);});MessageBox.Show(this,"进入低占用模式失败："+error.Message,Text);}
-        finally{lowTransition=false;}
+        finally{lowTransition=false;MaybeRestoreAfterGameExit();}
     }
     void ShowLowMemoryPanel(bool keepCore){
         if(lowMemoryTray==null){
@@ -65,11 +69,48 @@ internal sealed partial class LauncherWindow {
         }catch(Exception error){Log("low-memory",error.ToString());MessageBox.Show(this,"恢复主界面失败："+error.Message,Text);}
         finally{lowTransition=false;}
     }
+    void MaybeRestoreAfterGameExit(){
+        if(closing||allowClose||lowTransition||!lowMemory||!lastLowAutomatic||monitoredGames.Count>0||preparingGames.Count>0)return;
+        Log("low-memory","所有已跟踪的游戏进程已退出，恢复主界面");
+        BeginInvoke(new Action(async()=>{if(monitoredGames.Count==0&&preparingGames.Count==0&&lastLowAutomatic)await RestoreFullInterface();}));
+    }
+    void ForgetGame(int pid,System.Diagnostics.Process process){
+        System.Diagnostics.Process current;
+        if(!monitoredGames.TryGetValue(pid,out current)||!Object.ReferenceEquals(current,process))return;
+        monitoredGames.Remove(pid);
+        var ended=new List<string>();foreach(var entry in gameLaunchPids)if(entry.Value==pid)ended.Add(entry.Key);
+        foreach(var id in ended){gameLaunchPids.Remove(id);pendingLowMemoryLaunches.Remove(id);}
+        process.Dispose();MaybeRestoreAfterGameExit();
+    }
+    void TrackGame(string id,int pid){
+        if(pid<=0)return;
+        gameLaunchPids[id]=pid;if(monitoredGames.ContainsKey(pid))return;
+        try{
+            var process=System.Diagnostics.Process.GetProcessById(pid);monitoredGames.Add(pid,process);
+            process.Exited+=delegate{try{if(!IsDisposed&&!closing)BeginInvoke(new Action(()=>ForgetGame(pid,process)));}catch{}};
+            process.EnableRaisingEvents=true;
+            if(process.HasExited)ForgetGame(pid,process);
+        }catch(Exception error){
+            System.Diagnostics.Process process;if(monitoredGames.TryGetValue(pid,out process)){monitoredGames.Remove(pid);process.Dispose();}
+            gameLaunchPids.Remove(id);pendingLowMemoryLaunches.Remove(id);
+            Log("low-memory","无法跟踪游戏进程 "+pid+"："+error.Message);
+        }
+    }
+    void DisposeGameMonitors(){foreach(var process in monitoredGames.Values)process.Dispose();monitoredGames.Clear();gameLaunchPids.Clear();preparingGames.Clear();}
     void ObserveLowMemoryLaunch(string channel,object[] args){
         if(channel!="event:launchState"||args.Length==0)return;
         var state=args[0];string id=Json.Str(state,"launchId"),status=Json.Str(state,"status");
-        if(status=="exited"||status=="error"){pendingLowMemoryLaunches.Remove(id);return;}
+        if(id.Length==0)return;
+        if(status=="launching"){preparingGames.Add(id);return;}
+        if(status=="exited"||status=="error"){
+            preparingGames.Remove(id);pendingLowMemoryLaunches.Remove(id);
+            int pid;System.Diagnostics.Process process;
+            if(gameLaunchPids.TryGetValue(id,out pid)&&monitoredGames.TryGetValue(pid,out process))ForgetGame(pid,process);
+            else MaybeRestoreAfterGameExit();return;
+        }
+        if(status=="running"){preparingGames.Remove(id);TrackGame(id,Json.Int(state,"pid",0));}
         if(lowMemory||lowTransition||allowClose||!WantsAutoLowMemory()||id.Length==0||status!="running"||id.StartsWith("recovered:")||!lowMemoryLaunches.Add(id))return;
+        if(!gameLaunchPids.ContainsKey(id))return;
         pendingLowMemoryLaunches.Add(id);
         if(lowMemoryLaunches.Count>256)lowMemoryLaunches.Clear();
         if(autoLowRequested)return;autoLowRequested=true;

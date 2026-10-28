@@ -1,7 +1,7 @@
 {
   "name": "zero-distance",
   "productName": "ZeroDistance",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "ZeroDistance · Minecraft Java 启动器",
   "main": "out/main/index.js",
   "scripts": {

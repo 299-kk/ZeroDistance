@@ -14,7 +14,7 @@ using Microsoft.Web.WebView2.WinForms;
 using Microsoft.VisualBasic.FileIO;
 
 internal sealed partial class LauncherWindow : Form {
-    const string Origin="https://zerodistance-native.test/",Version="0.3.2";
+    const string Origin="https://zerodistance-native.test/",Version="0.3.3";
     public static string CurrentAppVersion {get{return Version;}}
     const string LegacyStorageUrl="https://zerodistance-native.local/__ui_migration.html";
     WebView2 browser=new WebView2();
@@ -156,7 +156,7 @@ internal sealed partial class LauncherWindow : Form {
             else if(channel=="native:qaHide"&&qa){Hide();}
             else if(channel=="window:visibility")result=!prewarming&&Visible&&WindowState!=FormWindowState.Minimized;
             else if(channel=="native:qaCore"&&qa)result=await engine.Invoke("__native:qaCore",new object[0]);
-            else if(channel=="native:qaLaunchRunning"&&qa){EngineEvent("event:launchState",new object[]{Json.Parse(Json.Stringify(new{status="running",launchId="qa-"+Guid.NewGuid().ToString("N"),versionId="qa",text="QA launch event"}))});result=new{ok=true};}
+            else if(channel=="native:qaLaunchRunning"&&qa){int pid=args.Length>0?Convert.ToInt32(args[0]):0;EngineEvent("event:launchState",new object[]{Json.Parse(Json.Stringify(new{status="running",launchId="qa-"+Guid.NewGuid().ToString("N"),versionId="qa",pid=pid,text="QA launch event"}))});result=new{ok=true};}
             else if(channel=="window:lowMemoryReady"){if(lowMemoryReady!=null)lowMemoryReady.TrySetResult(true);}
             else if(channel=="consent:ready"){presented=true;previousTick=clock.ElapsedMilliseconds;result=ConsentState();}
             else if(channel=="consent:accept"){
@@ -275,7 +275,7 @@ internal sealed partial class LauncherWindow : Form {
             if(isMainPage){var bounds=WindowState==FormWindowState.Normal?ClientSize:RestoreBounds.Size;try{Json.Atomic(Path.Combine(dataDirectory,"window.json"),new{width=bounds.Width,height=bounds.Height,maximized=WindowState==FormWindowState.Maximized});}catch{}}
             Hide();CloseSplash();browser.Dispose();await engine.Stop();Close();return;
         }
-        closing=true;timer.Stop();revealTimer.Stop();idleMemoryTimer.Stop();idleMemoryTimer.Dispose();if(lowMemoryTray!=null)lowMemoryTray.Dispose();CloseSplash();
+        closing=true;timer.Stop();revealTimer.Stop();idleMemoryTimer.Stop();idleMemoryTimer.Dispose();DisposeGameMonitors();if(lowMemoryTray!=null)lowMemoryTray.Dispose();CloseSplash();
     }
     public void EngineEvent(string channel,object[] args){if(IsDisposed||closing)return;try{BeginInvoke(new Action(()=>{ObserveLowMemoryLaunch(channel,args);if(!lowMemory)Emit(browser,channel,args);}));}catch{}}
     public void BackendFailed(){if(IsDisposed||closing)return;try{BeginInvoke(new Action(()=>{if(!allowClose){CloseSplash();RevealMain(false);MessageBox.Show(this,"功能后端已退出，请重新打开软件。已有 Minecraft 进程会继续运行。",Text,MessageBoxButtons.OK,MessageBoxIcon.Error);}}));}catch{}}

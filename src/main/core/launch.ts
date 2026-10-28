@@ -184,7 +184,7 @@ export function restoreRunningGame(onState: (s: LaunchState) => void): RunningGa
     try { process.kill(record.pid, 0) } catch { clearRunningGame(record.pid); continue }
     latest = record
     lastLaunch = { versionId: record.versionId, javaPath: '', startedAt: record.startedAt, effectiveGameDir: record.effectiveGameDir, logDir: record.logDir, pid: record.pid }
-    const state = { versionId: record.versionId, folder: record.folder || folderOfVersion(record.versionId), launchId: `recovered:${record.pid}` }
+    const state = { versionId: record.versionId, folder: record.folder || folderOfVersion(record.versionId), launchId: `recovered:${record.pid}`, pid: record.pid }
     onState({ ...state, status: 'running', text: '游戏进程仍在运行（启动器重新打开）' })
     if (restoredProcesses.has(record.pid)) continue
     restoredProcesses.add(record.pid)
@@ -750,7 +750,7 @@ async function launchOwned(
   }))
   // spawnGameProcess returns only after the OS confirms process creation.
   launchLog.info(`游戏进程已启动：pid=${proc.pid}`)
-  onState({ status: 'running', text: '游戏进程已启动' })
+  onState({ status: 'running', pid: proc.pid, text: '游戏进程已启动' })
   // QuickPlay 直达（创建命令世界/进服）：游戏窗口出现后拉到前台，避免鼠标被锁在未聚焦窗口里
   if (options.singleplayerWorld || serverAddress) {
     void focusGameWindow(proc).then(() => log('[KAMUCL] 游戏窗口已聚焦')).catch(error => log(`[KAMUCL] 自动聚焦未完成：${error.message}；请点击任务栏中的 Minecraft 窗口`))

@@ -683,6 +683,8 @@ export interface ProgressEvent {
 
 export interface LaunchState {
   launchId?: string
+  /** Actual game process; lets the native host monitor it while the backend sleeps. */
+  pid?: number
   versionId?: string
   folder?: string
   status: 'launching' | 'running' | 'exited' | 'error'

@@ -1,4 +1,4 @@
-import { app, config, output, receiveNative, ipcMain, ipcEvent, mainWindow, releaseNativeImages } from './electron'
+import { app, config, output, receiveNative, ipcMain, ipcEvent, mainWindow, releaseNativeImages, nativeCall } from './electron'
 import readline from 'node:readline'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -15,6 +15,7 @@ import { stopTerracottaOnQuit,hasActiveTerracottaServices } from '../../src/main
 import { frpManager } from '../../src/main/core/frpService'
 import { listPlugins, readPluginCode } from '../../src/main/core/plugins'
 import { closeHttpClient } from '../../src/main/core/httpClient'
+import { setNativeDownloadProxyResolver } from '../../src/main/core/downloadFetch'
 import { applyNativeAppearance } from '../../src/main/nativeAppearance'
 import { releaseProjectionRegistry } from '../../src/main/core/projectionRegistry'
 import { releaseSkinProfileMemory } from '../../src/main/core/skins'
@@ -73,6 +74,11 @@ lines.on('line',line=>{
 })
 async function start(){
   initializeLauncherLog()
+  if (!config.qa || config.qaNetworkProxy) setNativeDownloadProxyResolver(async url => {
+    if (new URL(url).protocol !== 'https:') return undefined
+    const route = await nativeCall('network:resolveProxy', [url])
+    return typeof route === 'string' ? route : undefined
+  })
   await migrateLegacyAppearanceAssets()
   registerIpc(()=>mainWindow as any)
   // Render known instances immediately; bounded disk discovery refreshes the
