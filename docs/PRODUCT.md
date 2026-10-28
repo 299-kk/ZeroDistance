@@ -1,6 +1,6 @@
 # ZeroDistance 产品说明
 
-当前版本为 **0.3.3 Preview**，主要支持 Windows 10/11 x64。ZeroDistance 是独立的 Minecraft Java 版启动器，基于 KAMUCL 开发，并参考 Modrinth 与 PCL 的使用流程。项目不代表 Mojang、Microsoft 或参考项目的官方产品。
+当前版本为 **0.3.4 Preview**，主要支持 Windows 10/11 x64。ZeroDistance 是独立的 Minecraft Java 版启动器，基于 KAMUCL 开发，并参考 Modrinth 与 PCL 的使用流程。项目不代表 Mojang、Microsoft 或参考项目的官方产品。
 
 ## 安装与首次使用
 

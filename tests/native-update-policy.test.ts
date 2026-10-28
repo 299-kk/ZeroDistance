@@ -13,5 +13,7 @@ test('update transport uses GitHub first, normalizes mirror prefixes, and valida
  const url=asset.url;assert.deepEqual(nativeUpdateSources(url,{updateMirrorUrl:'https://mirror.example'}),[url,'https://mirror.example/'+url])
  assert.deepEqual(nativeUpdateSources(url,{updateSource:'direct',updateMirrorUrl:'broken'}),[url])
  assert.deepEqual(nativeUpdateSources(url,{updateSource:'mirror',updateMirrorUrl:'https://mirror.example/'}),['https://mirror.example/'+url])
+ assert.deepEqual(nativeUpdateSources(url,{}),[url,'https://gh-proxy.org/'+url,'https://gh-proxy.com/'+url,'https://ghproxy.net/'+url])
+ assert.deepEqual(nativeUpdateSources(url,{updateSource:'mirror'}),['https://gh-proxy.org/'+url,'https://gh-proxy.com/'+url,'https://ghproxy.net/'+url])
  assert.throws(()=>nativeUpdateSources(url,{updateMirrorUrl:'http://untrusted.example/'}));assert.throws(()=>nativeUpdateSources(url,{updateMirrorUrl:'https://user:password@example.com/'}))
 })

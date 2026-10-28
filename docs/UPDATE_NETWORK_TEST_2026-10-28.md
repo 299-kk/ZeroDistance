@@ -22,7 +22,7 @@
 
 ## 受控网络检查
 
-本机 HTTPS 测试服务采用单独生成的临时证书，仅供测试子进程信任；没有更改 Windows 全局证书、降低 TLS 检查或使用真实发布私钥。20 组检查通过：
+本机 HTTPS 测试服务采用单独生成的临时证书，仅供测试子进程信任；没有更改 Windows 全局证书、降低 TLS 检查或使用真实发布私钥。本轮原始 20 组检查通过：
 
 - 合法 HTTPS 重定向、HTTP 降级拒绝、重定向次数限制、伪造证书拒绝。
 - 即使传输连接被信任，伪造签名与过大的更新清单仍被拒绝。
@@ -31,10 +31,17 @@
 - 两个来源返回损坏内容时保留已验证旧包，取消与正常退出均关闭连接并清理临时文件。
 - HTTP CONNECT 代理、代理下的证书验证、代理要求认证或不可用时直连、代理卡住约 5 秒后直连。
 
+## 切源修复复测（同日）
+
+针对国内直连不稳，下载在连接无响应、传输停滞或持续低速时切换内置镜像。加入切源修复后重新执行，累计 26 组受控 HTTPS 检查通过，新增覆盖：连接不响应且忽略取消时仍能切源、响应体停滞后续传切源、持续低速切源并给出提示、镜像也失败时重试较慢的原来源、用户暂停期间不触发切源、仅 GitHub 模式容忍低速下载。
+
+另做一次真实网络故障注入：GitHub 侧被模拟为不可用，客户端从公开镜像 `https://gh-proxy.org/` 读取已签名的 0.3.3 清单，并下载完整 ZIP（39,118,254 字节）；签名、大小和 SHA-256 与本地留档一致。该结果说明镜像能取到真实发布包，但不代表所有运营商或时段都可用。
+
 复测入口：
 
 ```powershell
 node native-launcher/scripts/verify-update-network.cjs
+node native-launcher/scripts/verify-update-real-fallback.cjs
 node native-launcher/scripts/verify-update-live-network.cjs
 node native-launcher/scripts/verify-update-system-proxy.cjs
 node native-launcher/scripts/verify-update-real-mirror-resume.cjs

@@ -13,6 +13,7 @@ import { finishTask, registerTask } from './tasks'
 import { currentVersion, fetchSha256Sums, sha256File } from './selfUpdate'
 import { logScope } from './launcherLog'
 import { isolatedUpdateTest, trustedUpdateRelease, updateAssetName } from './updateTrust'
+import { nativeUpdateSources } from '../../shared/nativeUpdatePolicy'
 import { macAppTarget, macUpdateSupported, macUpdateDir, readMacUpdate, clearMacUpdate, stageMacUpdate, blockedMacVersion, applyMacUpdateOnStartup, acknowledgeMacUpdate, stageMacBackup } from './macUpdate'
 
 const updateLog = logScope('self-update')
@@ -236,12 +237,8 @@ export async function applyPendingIfAny(): Promise<boolean> {
 
 /** 按设置构造下载候选 URL 列表（auto=直连优先镜像兜底；direct=仅直连；mirror=仅镜像） */
 export function updateDownloadCandidates(assetUrl: string, settings: Pick<Settings, 'updateSource' | 'updateMirrorUrl'>): string[] {
-  const mirrorPrefix = (settings.updateMirrorUrl || 'https://ghproxy.net/').trim()
-  const mirrored = mirrorPrefix ? mirrorPrefix + assetUrl : ''
-  const source = settings.updateSource ?? 'auto'
-  if (source === 'direct') return [assetUrl]
-  if (source === 'mirror') return mirrored ? [mirrored] : [assetUrl]
-  return mirrored ? [assetUrl, mirrored] : [assetUrl]
+  // Same transport policy as the native launcher: built-in mirror list, custom override, no trust change.
+  return nativeUpdateSources(assetUrl, settings)
 }
 
 // ---------------- 下载（接入下载中心） ----------------

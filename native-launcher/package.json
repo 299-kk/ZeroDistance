@@ -1,7 +1,7 @@
 {
   "name": "zero-distance-native",
   "private": true,
-  "version": "0.3.3",
+  "version": "0.3.4",
   "releaseChannel": "preview",
   "testingStartedAt": "2026-10-22",
   "description": "ZeroDistance native desktop migration, original Vue interface",

@@ -14,7 +14,7 @@ using Microsoft.Web.WebView2.WinForms;
 using Microsoft.VisualBasic.FileIO;
 
 internal sealed partial class LauncherWindow : Form {
-    const string Origin="https://zerodistance-native.test/",Version="0.3.3";
+    const string Origin="https://zerodistance-native.test/",Version="0.3.4";
     public static string CurrentAppVersion {get{return Version;}}
     const string LegacyStorageUrl="https://zerodistance-native.local/__ui_migration.html";
     WebView2 browser=new WebView2();

@@ -1,6 +1,6 @@
 # 对应源码与重新构建
 
-ZeroDistance 的公开源码位于 [299-kk/ZeroDistance](https://github.com/299-kk/ZeroDistance)，0.3.3 的对应源码包随发行物提供。原始来源为 [YUN-SAN3/KAMUCL](https://github.com/YUN-SAN3/KAMUCL) 1.1.9，来源记录见 [UPSTREAM.md](UPSTREAM.md)。
+ZeroDistance 的公开源码位于 [299-kk/ZeroDistance](https://github.com/299-kk/ZeroDistance)，0.3.4 的对应源码包随发行物提供。原始来源为 [YUN-SAN3/KAMUCL](https://github.com/YUN-SAN3/KAMUCL) 1.1.9，来源记录见 [UPSTREAM.md](UPSTREAM.md)。
 
 源码包含应用、LGPL 部分、C# 辅助程序、Java 桥接模组与局域网补丁、原始投影注册表、构建脚本、依赖锁文件及许可。允许修改和重新构建 LGPL 部分并与应用组合；不禁止为调试这些修改而逆向工程，无需 ZeroDistance 私有密钥。
 

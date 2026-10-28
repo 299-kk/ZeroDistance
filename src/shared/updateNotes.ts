@@ -1,6 +1,11 @@
 /** ZeroDistance built-in release notes. Upstream history is preserved in docs/upstream. */
 export interface UpdateNote { version: string; date: string; title?: string; summary?: string; phase?: 'preview' | 'validation'; testingNotes?: string[]; changes: string[] }
 export const updateNotes: UpdateNote[] = [{
+ version: '0.3.4', date: '2026-10-28', phase: 'preview', title: '更新下载稳定性',
+ summary: '改善 GitHub 连接不稳定时的更新下载和镜像切换。',
+ changes: ['自动模式在连接超时、传输停滞或持续低速时尝试备用镜像，并显示切换状态。', '提供多个内置镜像，支持自定义地址和仅 GitHub 模式；来源之间可继续下载，完整包仍验证发布签名和 SHA-256。', '网络请求无响应时支持及时切源或取消，所有备用来源失效时可重试较慢的来源。'],
+ testingNotes: ['本版为公开预览测试版。', '已进行受控 HTTPS 故障测试，并在模拟 GitHub 不可用时通过真实镜像下载和校验完整发行包。', '镜像为第三方服务，各地网络条件不同；0.3.3 的更新器不会自动获得本版切源修复，必要时可先手动选择可用镜像。']
+}, {
  version: '0.3.3', date: '2026-10-28', phase: 'preview', title: '导入与游戏退出修复',
  summary: '修复整合包下载的系统代理支持，以及游戏退出后低占用模式未恢复主界面的问题。',
  changes: ['游戏资源与加载器安装器下载遵循 Windows 系统代理；代理连接失败时尝试直连。', '自动低占用模式跟踪游戏进程，所有游戏退出后自动恢复主界面；手动进入的低占用模式保持手动恢复。', '多开时等待所有游戏结束，联机核心在恢复界面时继续运行。'],

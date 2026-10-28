@@ -53,8 +53,8 @@ export function httpFetch(
   if(init.proxyUrl){
     const {proxyUrl,systemProxy,bodyTimeoutMs,separateConnection,...rest}=init,proxy=new URL(proxyUrl)
     if(!['http:','https:'].includes(proxy.protocol)||proxy.username||proxy.password||proxy.search||proxy.hash)throw Error('系统代理地址无效')
-    const key=proxy.href+'|'+(bodyTimeoutMs??30000);let agent=proxyAgents.get(key)
-    if(!agent){if(proxyAgents.size>=8){const first=proxyAgents.keys().next().value!;const old=proxyAgents.get(first)!;proxyAgents.delete(first);void old.close().catch(()=>{})}agent=new ProxyAgent({...AGENT_BASE_OPTIONS,uri:proxy.href,bodyTimeout:bodyTimeoutMs??30000});proxyAgents.set(key,agent)}
+    const key=proxy.href+'|'+(bodyTimeoutMs??30000)+'|'+(separateConnection?'http1':'auto');let agent=proxyAgents.get(key)
+    if(!agent){if(proxyAgents.size>=8){const first=proxyAgents.keys().next().value!;const old=proxyAgents.get(first)!;proxyAgents.delete(first);void old.close().catch(()=>{})}agent=new ProxyAgent({...AGENT_BASE_OPTIONS,allowH2:separateConnection?false:AGENT_BASE_OPTIONS.allowH2,uri:proxy.href,bodyTimeout:bodyTimeoutMs??30000});proxyAgents.set(key,agent)}
     return undiciFetch(url,{...rest,dispatcher:agent}) as unknown as Promise<Response>
   }
   if (init.separateConnection) {

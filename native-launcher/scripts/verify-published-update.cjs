@@ -3,7 +3,7 @@
 // publisher keys are replaced. Production user profiles are never selected.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),net=require('node:net'),assert=require('node:assert/strict'),{spawn,execFileSync}=require('node:child_process'),Zip=require('adm-zip')
 let pw;try{pw=require('playwright')}catch{pw=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'))}
-const root=path.resolve(__dirname,'../..'),project=path.join(root,'native-launcher'),qaRoot=path.join(root,'.qa/published-update'),oldVersion='0.3.2',newVersion=require('../package.json').version,delay=ms=>new Promise(r=>setTimeout(r,ms)),hash=b=>crypto.createHash('sha256').update(b).digest('hex')
+const root=path.resolve(__dirname,'../..'),project=path.join(root,'native-launcher'),qaRoot=path.join(root,'.qa/published-update'),oldVersion='0.3.3',newVersion=require('../package.json').version,delay=ms=>new Promise(r=>setTimeout(r,ms)),hash=b=>crypto.createHash('sha256').update(b).digest('hex')
 const executed=process.argv.indexOf('--execute'),qa=executed<0?path.join(qaRoot,crypto.randomUUID()):path.resolve(process.argv[executed+1]);assert(qa.startsWith(qaRoot+path.sep),'Test data must be inside the intended QA directory')
 const app=path.join(qa,'app'),data=path.join(qa,'profile'),game=path.join(qa,'game'),report={qa,from:oldVersion,to:newVersion,passed:[],ok:false},pass=t=>{report.passed.push(t);console.log('PASS '+t)}
 async function until(fn,label,timeout=45000){const end=Date.now()+timeout;while(Date.now()<end){const result=await fn();if(result)return result;await delay(100)}throw Error('Timeout: '+label)}

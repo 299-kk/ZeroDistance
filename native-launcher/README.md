@@ -1,6 +1,6 @@
 # ZeroDistance Windows 构建
 
-这是从 0.2.2 开始的正式迁移分支，当前版本为 **0.3.3**。它保留完整的原版 Vue 界面，由 C# / .NET Framework 4.8 和系统 WebView2 提供桌面窗口。没有安装 Electron 或 Chromium 副本。
+这是从 0.2.2 开始的正式迁移分支，当前版本为 **0.3.4**。它保留完整的原版 Vue 界面，由 C# / .NET Framework 4.8 和系统 WebView2 提供桌面窗口。没有安装 Electron 或 Chromium 副本。
 
 **预览测试从 2026 年 10 月 22 日开始。** 本版本用于收集实际使用中的问题。更新历史与测试说明见 [CHANGELOG.md](CHANGELOG.md)，也可在启动台右上角“更新日志”中离线查看全部版本记录。
 

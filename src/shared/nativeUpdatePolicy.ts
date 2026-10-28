@@ -11,11 +11,16 @@ export function validateNativeUpdate(value: unknown): NativeUpdatePayload {
   return p
 }
 export function nativeRelease(p: NativeUpdatePayload): ReleaseInfo { return { version: p.version, publishedAt: p.publishedAt, body: p.body, assetName: p.asset.name, assetUrl: p.asset.url, assetSize: p.asset.size } }
+/** Built-in mirrors, tried in order when no explicit mirror is configured. */
+export const DEFAULT_UPDATE_MIRRORS: readonly string[] = trust.defaultMirrors?.length ? trust.defaultMirrors : [trust.defaultMirror]
 export function nativeUpdateSources(url: string, settings: { updateSource?: string; updateMirrorUrl?: string }): string[] {
-  const source = settings.updateSource ?? 'auto', raw = (settings.updateMirrorUrl || trust.defaultMirror).trim()
+  const source = settings.updateSource ?? 'auto', custom = (settings.updateMirrorUrl || '').trim()
   if (source === 'direct') return [url]
-  const mirror = new URL(raw)
-  if (mirror.protocol !== 'https:' || mirror.username || mirror.password || mirror.search || mirror.hash) throw Error('更新镜像必须是有效的 HTTPS 前缀')
-  const alternate = mirror.href.replace(/\/*$/, '/') + url
-  return source === 'mirror' ? [alternate] : [url, alternate]
+  const candidates=custom?[custom]:DEFAULT_UPDATE_MIRRORS
+  const alternates=[...new Set(candidates.map(raw=>{
+    const mirror=new URL(raw)
+    if(mirror.protocol!=='https:'||mirror.username||mirror.password||mirror.search||mirror.hash)throw Error('更新镜像必须是有效的 HTTPS 前缀')
+    return mirror.href.replace(/\/*$/,'/')+url
+  }))]
+  return source === 'mirror' ? alternates : [url, ...alternates]
 }

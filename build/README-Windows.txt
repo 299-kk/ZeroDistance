@@ -1,4 +1,4 @@
-ZeroDistance 0.3.3 · Windows x64
+ZeroDistance 0.3.4 · Windows x64
 
 ZIP 版：先完整解压，再运行 ZeroDistance.exe。请保留其余文件和文件夹。
 安装版：运行 Setup.exe，按向导选择安装目录；通过开始菜单或桌面快捷方式启动。

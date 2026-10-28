@@ -4,7 +4,7 @@
 
 ## 版本与内容
 
-1. 统一根 package.json、native-launcher/package.json、LauncherWindow 的版本常量、更新记录与当前产品文档。当前是 0.3.3 Preview，保留预览状态，不使用“原生迁移版”产品后缀。
+1. 统一根 package.json、native-launcher/package.json、LauncherWindow 的版本常量、更新记录与当前产品文档。当前是 0.3.4 Preview，保留预览状态，不使用“原生迁移版”产品后缀。
 2. 检查 `.gitignore` 和 `npm run check:public`。不得提交账号、令牌、游戏、测试用户目录、原始素材、构建缓存或私有下载工具。
 3. 检查 LICENSE、THIRD_PARTY_NOTICES、对应源码和素材来源。未取得再分发授权的照片不能进入公开源码、公开安装包、Release 附件或预览截图；已有本机含照片的历史包不直接上传。
 4. 产品说明只描述实际实现及验证边界，不能把“可配置”写成“所有环境保证可用”。

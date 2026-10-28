@@ -47,8 +47,10 @@ test('download candidates honor source setting: auto=direct+mirror, direct only,
   const url = 'https://github.com/x/KAMUCL-1.0.14.exe'
   const auto = updateDownloadCandidates(url, { updateSource: 'auto', updateMirrorUrl: 'https://ghproxy.net/' })
   assert.deepEqual(auto, [url, 'https://ghproxy.net/' + url])
+  assert.deepEqual(updateDownloadCandidates(url, { updateSource: 'auto' }), [url, 'https://gh-proxy.org/' + url, 'https://gh-proxy.com/' + url, 'https://ghproxy.net/' + url])
   assert.deepEqual(updateDownloadCandidates(url, { updateSource: 'direct', updateMirrorUrl: '' }), [url])
   assert.deepEqual(updateDownloadCandidates(url, { updateSource: 'mirror', updateMirrorUrl: 'https://m.example/' }), ['https://m.example/' + url])
+  assert.deepEqual(updateDownloadCandidates(url, { updateSource: 'mirror' }), ['https://gh-proxy.org/' + url, 'https://gh-proxy.com/' + url, 'https://ghproxy.net/' + url])
 })
 
 test('markdown lite: escapes HTML, renders headings/bold/code/lists/links only', () => {

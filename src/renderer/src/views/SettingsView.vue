@@ -1115,7 +1115,7 @@ async function onRemovePlugin(p: PluginInfo) {
             <select data-ui="SettingsView:c67695800552" class="select upd-source" :value="updateSource" @change="onUpdateSourceChange">
               <option value="auto">自动（GitHub 优先，失败后使用镜像）</option>
               <option value="direct">仅 GitHub</option>
-              <option value="mirror">仅自定义镜像</option>
+              <option value="mirror">仅镜像</option>
             </select>
           </div>
           <div data-ui="SettingsView:c63358a8e469" v-if="updateSource !== 'direct'" class="upd-row">
@@ -1123,7 +1123,7 @@ async function onRemovePlugin(p: PluginInfo) {
             <input data-ui="SettingsView:573dec07c5b6"
               class="input mono upd-mirror"
               :value="store.settings.updateMirrorUrl ?? ''"
-              placeholder="https://ghproxy.net/（留空用默认）"
+              placeholder="留空使用内置镜像；填写后替换内置列表"
               @change="onUpdateMirrorChange"
             />
           </div>
@@ -1137,7 +1137,7 @@ async function onRemovePlugin(p: PluginInfo) {
           </div>
           </details>
           <p class="muted group-hint">
-            更新来自 299-kk/ZeroDistance 的 GitHub Releases，遵循 Windows 系统代理；代理不可用时尝试直接连接。GitHub 失败后尝试备用镜像，下载中断可尝试续传，更新验证发布签名和 SHA-256；退出软件后静默替换文件，无需重新运行安装程序。游戏运行期间不会为更新强制退出。
+            更新来自 299-kk/ZeroDistance 的 GitHub Releases，遵循 Windows 系统代理；代理不可用时尝试直接连接。自动模式在连接超时、停滞或持续低速时切换镜像，留空使用内置镜像；下载中断可尝试续传，更新验证发布签名和 SHA-256。退出软件后静默替换文件，无需重新运行安装程序。
           </p>
         </div>
       </details>
