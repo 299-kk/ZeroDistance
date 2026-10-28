@@ -1,6 +1,11 @@
 /** ZeroDistance built-in release notes. Upstream history is preserved in docs/upstream. */
 export interface UpdateNote { version: string; date: string; title?: string; summary?: string; phase?: 'preview' | 'validation'; testingNotes?: string[]; changes: string[] }
 export const updateNotes: UpdateNote[] = [{
+ version: '0.3.2', date: '2026-10-27', phase: 'preview', title: '内存与在线更新',
+ summary: '新增可恢复的低占用模式，减少图片缓存，并接入 GitHub 与备用镜像的签名更新。',
+ changes: ['设置 → 行为与登录新增低占用模式，支持手动进入及游戏启动后自动进入（默认关闭）。', '低占用时释放 WebView2 和非核心功能，保留已有联机核心；通过原生小窗口或托盘恢复完整界面。', '轮播只预载当前和下一张图片；设置页使用独立缩略图。', '图片文件改为流式传输，尺寸检查不再将整图转成 PNG/Base64；图片和皮肤缓存按字节限制。', '投影注册表按需解压；最小化后释放可重建缓存并降低 WebView2 内存目标。', '在线更新优先 GitHub Releases，失败后尝试备用镜像；更新清单使用发布签名，下载包核验 SHA-256。', '更新遵循 Windows 系统代理；代理不可用时尝试直连，下载中断可尝试续传并验证完整文件。', '后台下载更新，正常退出后静默替换，下次打开生效，无需重新运行安装程序。', '修补网络与 ZIP 组件漏洞；验证更新助手内置指纹，阻止降级重定向和旧包重放。', '完整目录更新支持安装版和 ZIP 版，替换前备份；文件占用和中断时按日志恢复。'],
+ testingNotes: ['本版为公开预览测试版。', '设置 → 行为与登录新增低占用模式，可手动进入或开启游戏启动后自动进入（默认关闭），双击托盘图标恢复。', '低占用释放 WebView2，保留已有联机核心；下载和未保存编辑会暂缓切换。', '低占用本机测试约 30 MiB 私有提交，持续 TCP 核心约 72 MiB；后者总工作集仍超过 100 MB，正常完整界面未达到 100 MB。', '自动切换使用 QA 事件与回环 TCP 验证，真实游戏及公网联机仍需继续验证。', '0.3.1 及更早版本先手动安装一次；签名更新在正常退出后静默应用，下次打开生效。']
+}, {
   version: '0.3.1', date: '2026-10-22', phase: 'preview', title: '方块世界背景',
   summary: '内置四张 AI 生成背景，安装程序和 ZIP 可从 GitHub Releases 下载。',
   changes: ['新增樱花山谷、雪山湖畔、月下营地、海岸落日四张默认背景，随源码和安装包分发。', '替换原默认照片，更新使用声明及素材说明，补充 AI 制作范围和上游来源说明。', '软件关于页面增加 AI 制作说明，保留原有界面、功能及数据兼容。'],

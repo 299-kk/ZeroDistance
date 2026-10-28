@@ -80,5 +80,7 @@ test('the asset directory has no old illustrations, mascot textures, or generate
       continue
     }
     assert.equal(createHash('sha256').update(fs.readFileSync(file)).digest('hex'), image.sha256)
+    assert(image.thumbnailFile && image.thumbnailSha256)
+    assert.equal(createHash('sha256').update(fs.readFileSync(path.join(root,'launch',image.thumbnailFile))).digest('hex'),image.thumbnailSha256)
   }
 })

@@ -6,6 +6,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Net;
 
 internal static class NativeServices {
     static byte[] Bytes(object value){return Convert.FromBase64String(Convert.ToString(value));}
@@ -28,6 +29,16 @@ internal static class NativeServices {
         return new {width=image.Width,height=image.Height,png=Convert.ToBase64String(Png(image)),bitmap=bitmap,jpeg=jpeg};
     }
     public static object Execute(string operation,object[] args){
+        if(operation=="network:resolveProxy"){
+            Uri target;string input=Convert.ToString(args[0]);if(input.Length>8192||!Uri.TryCreate(input,UriKind.Absolute,out target)||target.Scheme!="https"||target.UserInfo!="")throw new Exception("更新地址无效");
+            var proxy=WebRequest.GetSystemWebProxy();if(proxy==null||proxy.IsBypassed(target))return null;var route=proxy.GetProxy(target);
+            if(route==null||route==target||(route.Scheme!="http"&&route.Scheme!="https")||route.UserInfo!=""||route.Query!=""||route.Fragment!="")return null;
+            return route.AbsoluteUri;
+        }
+        if(operation=="image:inspectFile"){
+            string file=Convert.ToString(args[0]);if(new FileInfo(file).Length>32*1024*1024)return Empty();
+            try{using(var stream=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))using(var image=Image.FromStream(stream,true,true)){Dimensions(image.Width,image.Height);return new{width=image.Width,height=image.Height,png=""};}}catch(ArgumentException){return Empty();}
+        }
         if(operation=="secret:encrypt"){
             string plain=Convert.ToString(args[0]);if(plain.Length>4*1024*1024)throw new Exception("凭据过大");
             var cipher=ProtectedData.Protect(Encoding.UTF8.GetBytes(plain),null,DataProtectionScope.CurrentUser);var result=new byte[cipher.Length+3];Encoding.ASCII.GetBytes("ZD1").CopyTo(result,0);cipher.CopyTo(result,3);return Convert.ToBase64String(result);

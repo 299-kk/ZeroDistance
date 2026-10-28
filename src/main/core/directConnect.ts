@@ -18,6 +18,7 @@ let session: { state: DirectHostState; close: () => Promise<void>; forwarder: Aw
 let operation: Promise<DirectHostState> | null = null
 let controller: AbortController | null = null
 let lastMessages: string[] = []
+export function hasActiveDirectServices():boolean{return !!session||!!operation}
 
 export function directState(): DirectHostState {
   return session ? { ...session.state, connections: session.forwarder.connections } : { active: false, endpoints: [], connections: 0, messages: lastMessages }

@@ -5,6 +5,7 @@ import path from 'node:path'
 import { EventEmitter } from 'node:events'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import { BoundedCache } from '../../src/shared/boundedCache'
 
 export const config=JSON.parse(process.env.ZERO_DISTANCE_NATIVE_CONFIG||'{}')
 const write=(value:unknown)=>process.stdout.write(JSON.stringify(value)+'\n')
@@ -90,19 +91,21 @@ export const Menu={buildFromTemplate(template:any[]){return {popup(){void native
 export const net={fetch:(...args:Parameters<typeof fetch>)=>fetch(...args)}
 export const protocol={handle(){},registerSchemesAsPrivileged(){}}
 
-type ImageValue={width:number;height:number;png:string;bitmap?:string;jpeg?:string}
-const images=new Map<string,ImageValue>()
+type ImageValue={width:number;height:number;png:string;bitmap?:string;jpeg?:string;file?:string}
+const images=new BoundedCache<string,ImageValue>(8*1024*1024,32,value=>2*((value.png?.length||0)+(value.bitmap?.length||0)+(value.jpeg?.length||0)))
+export function releaseNativeImages(){images.clear()}
 class NativeImage{
   value:ImageValue
   constructor(value:ImageValue){this.value=value}
+  private pixels(){if(this.value.file&&!this.value.png){const file=this.value.file;this.value=syncNative('image:decode',[fs.readFileSync(file).toString('base64')])}return this.value.png||''}
   isEmpty(){return !this.value.width||!this.value.height}
   getSize(){return {width:this.value.width,height:this.value.height}}
-  toPNG(){return Buffer.from(this.value.png||'','base64')}
-  toDataURL(){return 'data:image/png;base64,'+this.value.png}
-  toBitmap(){return Buffer.from(this.value.bitmap||syncNative('image:convert',[this.value.png,{bitmap:true}]).bitmap,'base64')}
-  toJPEG(quality:number){return Buffer.from(syncNative('image:convert',[this.value.png,{jpeg:quality}]).jpeg,'base64')}
-  resize(options:any){return new NativeImage(syncNative('image:convert',[this.value.png,options]))}
-  crop(rect:any){return new NativeImage(syncNative('image:convert',[this.value.png,{crop:rect}]))}
+  toPNG(){return Buffer.from(this.pixels(),'base64')}
+  toDataURL(){return 'data:image/png;base64,'+this.pixels()}
+  toBitmap(){return Buffer.from(this.value.bitmap||syncNative('image:convert',[this.pixels(),{bitmap:true}]).bitmap,'base64')}
+  toJPEG(quality:number){return Buffer.from(syncNative('image:convert',[this.pixels(),{jpeg:quality}]).jpeg,'base64')}
+  resize(options:any){return new NativeImage(syncNative('image:convert',[this.pixels(),options]))}
+  crop(rect:any){return new NativeImage(syncNative('image:convert',[this.pixels(),{crop:rect}]))}
 }
 export const nativeImage={
   createFromBuffer(data:Buffer){
@@ -110,9 +113,9 @@ export const nativeImage={
     if(data.length>32*1024*1024)return new NativeImage({width:0,height:0,png:''})
     const key=createHash('sha256').update(data).digest('hex')
     let image=images.get(key)
-    if(!image){image=syncNative('image:decode',[data.toString('base64')]);if(images.size>=32)images.delete(images.keys().next().value!);images.set(key,image!)}
+    if(!image){image=syncNative('image:decode',[data.toString('base64')]);images.set(key,image!)}
     return new NativeImage(image!)
   },
-  createFromPath(file:string){try{return nativeImage.createFromBuffer(fs.readFileSync(file))}catch{return new NativeImage({width:0,height:0,png:''})}},
+  createFromPath(file:string){try{const meta=syncNative('image:inspectFile',[file]);return new NativeImage({...meta,file})}catch{return new NativeImage({width:0,height:0,png:''})}},
   createFromBitmap(data:Buffer,options:any){return new NativeImage(syncNative('image:bitmap',[data.toString('base64'),options]))}
 }

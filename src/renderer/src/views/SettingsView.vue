@@ -100,6 +100,7 @@ async function save(patch: Partial<Settings>) {
 const appVersion = __APP_VERSION__
 const isPreviewTesting = updateNotes.find(note => note.version === appVersion)?.phase === 'preview'
 const showLicenses = ref(false)
+async function enterLowMemory(){try{await window.kamucl.invoke('window:lowMemory')}catch(error){toast(errText(error),'error')}}
 const updateCheckState = ref<'idle' | 'checking' | 'latest' | 'failed'>('idle')
 let lastManualCheck = 0
 
@@ -205,7 +206,7 @@ async function onRestoreBackup() {
 async function onApplyPending() {
   try {
     await applyPendingUpdate()
-    toast('更新已就绪，下次手动启动时应用', 'success')
+    toast('更新已就绪，退出软件后会在后台应用', 'success')
   } catch (e) {
     toast('安装失败：' + errText(e), 'error')
   }
@@ -1042,7 +1043,7 @@ async function onRemovePlugin(p: PluginInfo) {
             <input data-ui="SettingsView:f2f1ffcd2e84"
               v-model="store.settings.closeAfterLaunch"
               type="checkbox"
-              @change="save({ closeAfterLaunch: store.settings!.closeAfterLaunch })"
+              @change="save({ closeAfterLaunch: store.settings!.closeAfterLaunch, ...(store.settings!.closeAfterLaunch ? {lowMemoryAfterLaunch:false} : {}) })"
             />
             <span class="switch-ui"></span>
           </label>
@@ -1061,6 +1062,11 @@ async function onRemovePlugin(p: PluginInfo) {
             <span class="switch-ui"></span>
           </label>
         </div>
+      </div>
+
+      <div v-show="category === 'general'" class="card group" data-section="low-memory">
+        <div class="group-inline"><div><h3 class="group-title">低占用模式</h3><p class="muted group-hint">释放整个浏览器界面，仅保留游戏与正在使用的联机服务；从托盘可恢复主界面。</p></div><button class="btn btn-gold btn-sm" @click="enterLowMemory">立即进入</button></div>
+        <div class="group-inline" style="margin-top:12px"><div><strong>游戏启动后自动进入</strong><p class="muted group-hint">成功启动游戏后切换；编辑或下载任务未完成时会暂缓。与“启动后关闭启动器”互斥。</p></div><label class="switch"><input type="checkbox" aria-label="游戏启动后自动进入低占用模式" :checked="store.settings.lowMemoryAfterLaunch === true" @change="save({lowMemoryAfterLaunch:($event.target as HTMLInputElement).checked, ...(($event.target as HTMLInputElement).checked ? {closeAfterLaunch:false} : {})})"/><span class="switch-ui"></span></label></div>
       </div>
 
       <!-- 关于与更新 -->
@@ -1089,7 +1095,7 @@ async function onRemovePlugin(p: PluginInfo) {
             <button data-ui="SettingsView:c30ef48b6984" class="btn btn-ghost btn-sm" @click="onCheckUpdate">重试</button>
           </div>
           <div class="upd-row">
-            <span class="upd-label">自动安装更新</span>
+            <span class="upd-label">后台静默更新</span>
             <label class="switch">
               <input data-ui="SettingsView:bc540ac861a7"
                 :disabled="!GITHUB_REPO" :checked="!!GITHUB_REPO && store.settings.autoUpdate !== false"
@@ -1098,17 +1104,17 @@ async function onRemovePlugin(p: PluginInfo) {
               />
               <span class="switch-ui"></span>
             </label>
-            <span data-ui="SettingsView:94871aad1da8" class="muted upd-auto-hint">发现新版本静默下载，下次启动时应用；关闭则弹窗询问</span>
+            <span data-ui="SettingsView:94871aad1da8" class="muted upd-auto-hint">后台下载，退出软件后自动替换，下次打开生效；关闭则下载前询问</span>
           </div>
           <div data-ui="SettingsView:1c8ad9d5ad0b" v-if="pendingUpdate" class="upd-row upd-pending-row">
-            <span data-ui="SettingsView:0447f8159ad6" class="upd-pending-text">v{{ pendingUpdate.release.version }} 已就绪，下次启动时应用</span>
-            <button data-ui="SettingsView:5bd17b41383a" class="btn btn-gold btn-sm" @click="onApplyPending">下次启动应用</button>
+            <span data-ui="SettingsView:0447f8159ad6" class="upd-pending-text">v{{ pendingUpdate.release.version }} 已就绪，退出后自动应用</span>
+            <button data-ui="SettingsView:5bd17b41383a" class="btn btn-gold btn-sm" @click="onApplyPending">查看更新状态</button>
           </div>
           <div class="upd-row">
             <span class="upd-label">更新下载源</span>
             <select data-ui="SettingsView:c67695800552" class="select upd-source" :value="updateSource" @change="onUpdateSourceChange">
-              <option value="auto">自动（直连优先，镜像加速）</option>
-              <option value="direct">仅 GitHub 直连</option>
+              <option value="auto">自动（GitHub 优先，失败后使用镜像）</option>
+              <option value="direct">仅 GitHub</option>
               <option value="mirror">仅自定义镜像</option>
             </select>
           </div>
@@ -1131,7 +1137,7 @@ async function onRemovePlugin(p: PluginInfo) {
           </div>
           </details>
           <p class="muted group-hint">
-            ZeroDistance 预览版尚未配置在线更新源。后续可从本地文件更新。
+            更新来自 299-kk/ZeroDistance 的 GitHub Releases，遵循 Windows 系统代理；代理不可用时尝试直接连接。GitHub 失败后尝试备用镜像，下载中断可尝试续传，更新验证发布签名和 SHA-256；退出软件后静默替换文件，无需重新运行安装程序。游戏运行期间不会为更新强制退出。
           </p>
         </div>
       </details>

@@ -9,7 +9,7 @@
  * 会被 30s 默认值误判为死链而反复中止（表现为「下载总是被取消」），因此下载路径显式
  * 传更长的 bodyTimeoutMs，其余调用方（frp 等）行为不变。
  */
-import { Agent, fetch as undiciFetch } from 'undici'
+import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici'
 
 /** 共享 Agent 与按 bodyTimeout 派生 Agent 的公共参数；调整时两者保持一致。 */
 const AGENT_BASE_OPTIONS = {
@@ -24,6 +24,7 @@ const sharedAgent = new Agent({ ...AGENT_BASE_OPTIONS, bodyTimeout: 30_000 })
 
 /** bodyTimeoutMs → 派生 Agent 缓存。键空间恒定（下载路径只用一个常量值），不会无限增长。 */
 const bodyTimeoutAgents = new Map<number, Agent>()
+const proxyAgents = new Map<string, ProxyAgent>()
 // Range workers need separate TCP connections, rather than streams on one throttled H2 connection.
 const rangeAgent = new Agent({ ...AGENT_BASE_OPTIONS, allowH2: false, bodyTimeout: 120_000 })
 
@@ -40,7 +41,7 @@ function agentWithBodyTimeout(bodyTimeoutMs: number): Agent {
  *  bodyTimeoutMs 为可选增量参数：不传时行为与旧版完全一致。 */
 export function httpFetch(
   url: string,
-  init: { signal?: AbortSignal; headers?: Record<string, string>; redirect?: 'follow' | 'manual' | 'error'; method?: string; body?: string; bodyTimeoutMs?: number; separateConnection?: boolean; systemProxy?: boolean } = {}
+  init: { signal?: AbortSignal; headers?: Record<string, string>; redirect?: 'follow' | 'manual' | 'error'; method?: string; body?: string; bodyTimeoutMs?: number; separateConnection?: boolean; systemProxy?: boolean; proxyUrl?: string } = {}
 ): Promise<Response> {
   // Runtime downloads must use the same OS proxy/PAC and certificate store as
   // the desktop app. Node fetch/undici do not inherit macOS system proxy settings.
@@ -48,6 +49,13 @@ export function httpFetch(
     const { systemProxy, bodyTimeoutMs, separateConnection, ...request } = init
     if (request.redirect === 'manual') return import('./systemDownload').then(({ systemDownload }) => systemDownload(url, request))
     return import('electron').then(({ net }) => net.fetch(url, request)) as Promise<Response>
+  }
+  if(init.proxyUrl){
+    const {proxyUrl,systemProxy,bodyTimeoutMs,separateConnection,...rest}=init,proxy=new URL(proxyUrl)
+    if(!['http:','https:'].includes(proxy.protocol)||proxy.username||proxy.password||proxy.search||proxy.hash)throw Error('系统代理地址无效')
+    const key=proxy.href+'|'+(bodyTimeoutMs??30000);let agent=proxyAgents.get(key)
+    if(!agent){if(proxyAgents.size>=8){const first=proxyAgents.keys().next().value!;const old=proxyAgents.get(first)!;proxyAgents.delete(first);void old.close().catch(()=>{})}agent=new ProxyAgent({...AGENT_BASE_OPTIONS,uri:proxy.href,bodyTimeout:bodyTimeoutMs??30000});proxyAgents.set(key,agent)}
+    return undiciFetch(url,{...rest,dispatcher:agent}) as unknown as Promise<Response>
   }
   if (init.separateConnection) {
     const { separateConnection, bodyTimeoutMs, ...rest } = init
@@ -62,5 +70,5 @@ export function httpFetch(
 
 /** 进程退出时关闭连接池（Electron 退出由主进程生命周期管理，这里仅防御性提供）。 */
 export async function closeHttpClient(): Promise<void> {
-  await Promise.all([sharedAgent.close(), rangeAgent.close(), ...[...bodyTimeoutAgents.values()].map((agent) => agent.close())])
+  await Promise.all([sharedAgent.close(), rangeAgent.close(), ...[...bodyTimeoutAgents.values(),...proxyAgents.values()].map((agent) => agent.close())])
 }

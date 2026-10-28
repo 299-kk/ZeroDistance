@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import type { ProfileSkins } from '../../shared/types'
+import { BoundedCache } from '../../shared/boundedCache'
 
 /** Cache only public appearance data. Account credentials never enter this store. */
 export function cacheableProfile(profile: ProfileSkins): ProfileSkins | null {
@@ -15,12 +16,14 @@ export function cacheableProfile(profile: ProfileSkins): ProfileSkins | null {
     capes: (profile.capes ?? []).slice(0, 16).map(c => ({ id: c.id, alias: c.alias, active: c.active, url: c.url, dataUrl: png(c.dataUrl) })) }
 }
 export class SkinProfileCache {
-  private memory = new Map<string, ProfileSkins>()
+  private memory = new BoundedCache<string, ProfileSkins>(4*1024*1024,8,profile=>2*JSON.stringify(profile).length)
   private pending = new Map<string, Promise<ProfileSkins>>()
   constructor(private directory: () => string) {}
+  clearMemory() { this.memory.clear() }
   private file(key: string) { return path.join(this.directory(), crypto.createHash('sha256').update(key).digest('hex') + '.json') }
   private read(key: string): ProfileSkins | null {
-    if (this.memory.has(key)) return this.memory.get(key)!
+    const memory = this.memory.get(key)
+    if (memory) return memory
     try {
       const file = this.file(key)
       if (fs.statSync(file).size > 8_000_000) return null

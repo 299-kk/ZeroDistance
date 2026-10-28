@@ -105,6 +105,7 @@ const viewMap: Record<ViewName, Component> = {
   accounts: AccountsView
 }
 
+watch(() => store.editMode, value => window.kamucl.send('window:lowMemoryBlocked',value), { immediate:true })
 const currentComponent = computed(() => viewMap[store.currentView])
 
 const navItems: Array<{ key: ViewName; label: string; icon: string }> = [
@@ -1144,7 +1145,7 @@ onMounted(async () => {
       if (updateModal.open && r.taskId === updateModal.taskId) updateModal.slowHint = true
     }),
     onUpdateReady((r) => {
-      toast(`新版本 v${r.version} 已下载完成，下次启动时应用`, 'success')
+      if(store.settings?.autoUpdate===false)toast(`新版本 v${r.version} 已就绪，退出软件后会在后台应用`, 'success')
     }),
     onInstallDone((r) => {
       store.installing.delete(r.versionId)

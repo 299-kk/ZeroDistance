@@ -15,6 +15,7 @@
   };
   native.addEventListener('message', event => {
     const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    if(message.event==='window:prepareLowMemory')setTimeout(()=>send('window:lowMemoryReady'),0);
     if(message.event) { for(const callback of subscriptions.get(message.event)||[]) { try { callback(...(message.args||[])); } catch(e) { console.error(e); } } return; }
     const request = pending.get(message.id); if(!request) return;
     pending.delete(message.id); message.error ? request.reject(new Error(message.error)) : request.resolve(message.result);

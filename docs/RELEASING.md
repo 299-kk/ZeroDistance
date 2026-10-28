@@ -1,10 +1,10 @@
 # 发布检查
 
-发布目标是 `299-kk/ZeroDistance`。本仓库是独立分支，禁止向 KAMUCL 上游推送代码、标签、附件或发布记录。首次公开托管不自动开启软件内在线更新。
+发布目标是 `299-kk/ZeroDistance`。本仓库是独立分支，禁止向 KAMUCL 上游推送代码、标签、附件或发布记录。
 
 ## 版本与内容
 
-1. 统一根 package.json、native-launcher/package.json、LauncherWindow 的版本常量、更新记录与当前产品文档。当前是 0.3.1 Preview，保留预览状态，不使用“原生迁移版”产品后缀。
+1. 统一根 package.json、native-launcher/package.json、LauncherWindow 的版本常量、更新记录与当前产品文档。当前是 0.3.2 Preview，保留预览状态，不使用“原生迁移版”产品后缀。
 2. 检查 `.gitignore` 和 `npm run check:public`。不得提交账号、令牌、游戏、测试用户目录、原始素材、构建缓存或私有下载工具。
 3. 检查 LICENSE、THIRD_PARTY_NOTICES、对应源码和素材来源。未取得再分发授权的照片不能进入公开源码、公开安装包、Release 附件或预览截图；已有本机含照片的历史包不直接上传。
 4. 产品说明只描述实际实现及验证边界，不能把“可配置”写成“所有环境保证可用”。
@@ -31,4 +31,4 @@ npm run package:native
 
 源码必须包含 LGPL 部分及其重新构建方式。不要用无法从该提交还原的私有二进制替代 Bridge、Java 代理或清理组件。发布说明应包含具体变化、验证范围、升级步骤和已知限制。
 
-软件内更新需要另行适配当前安装格式和校验流程；仅把 GitHub 仓库地址填入配置不表示自动更新已经完成。
+已实现签名完整目录更新及镜像回退；签名、私钥保管、feed 与最终 ZIP 一致性见 [原生更新](NATIVE_UPDATES.md)。普通构建不会自动发布，禁止将签名私钥提交仓库或打进源码包。

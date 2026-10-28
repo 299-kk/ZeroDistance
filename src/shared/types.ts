@@ -369,6 +369,7 @@ export interface Settings {
   reduceMotion?: boolean
   /** Skip the launcher startup overlay on the next launch; default false. */
   disableStartupAnimation?: boolean
+  lowMemoryAfterLaunch?: boolean
   visualDesign?: import('./visualDesign').VisualDesign
   gameDir: string
   /** 游戏文件夹登记列表（每个文件夹独立 versions/；libraries/assets/runtimes 共享于默认文件夹） */

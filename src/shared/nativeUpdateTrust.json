@@ -1,0 +1,7 @@
+{
+  "repository": "299-kk/ZeroDistance",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs0rQ+ZYxqVz+qQOtjgqi\nNou0KKmthix+Jen9XVFcsFsmZnTBjWZfuJy94GD42lkWp4JWL7O0yvZnHjXvxlrp\ni9JWRMCRO6jPRb2JBl1uHxNSCj5RPbQxzgP8yDtFY5/b9kaNTyqd+6hJvz3IUIhM\nRO53JOV7M6pmDTC7mHKUdoC3FJtl/E+zXVn8bmwq9Qw33MGlYLX8QeKtE0JMgS3X\na7XCNAPmVYOci48F8sRIrFRjLAnXZiHB/PVSlSKD7jIBCWwEEJUpnvjsFiUmFk1G\nOvjRdPUtIY3FINYX0MlM581IlVQTCXx2VZaLevtn6VEdUj4Cm9tVfq79aC4qk7YZ\n7wIDAQAB\n-----END PUBLIC KEY-----\n",
+  "publicXml": "<RSAKeyValue><Modulus>s0rQ+ZYxqVz+qQOtjgqiNou0KKmthix+Jen9XVFcsFsmZnTBjWZfuJy94GD42lkWp4JWL7O0yvZnHjXvxlrpi9JWRMCRO6jPRb2JBl1uHxNSCj5RPbQxzgP8yDtFY5/b9kaNTyqd+6hJvz3IUIhMRO53JOV7M6pmDTC7mHKUdoC3FJtl/E+zXVn8bmwq9Qw33MGlYLX8QeKtE0JMgS3Xa7XCNAPmVYOci48F8sRIrFRjLAnXZiHB/PVSlSKD7jIBCWwEEJUpnvjsFiUmFk1GOvjRdPUtIY3FINYX0MlM581IlVQTCXx2VZaLevtn6VEdUj4Cm9tVfq79aC4qk7YZ7w==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>",
+  "feedPath": "updates/windows-x64.json",
+  "defaultMirror": "https://ghproxy.net/"
+}

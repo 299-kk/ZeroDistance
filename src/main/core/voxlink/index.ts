@@ -24,6 +24,7 @@ const connectionLog = new ConnectionLog(() => vapp().baseURL(), () => !!vapp().s
 let app: VoxlinkApp | null = null
 let requestGeneration=0
 let requestPending=false
+export function hasActiveVoxlinkServices():boolean{return requestPending||!!app&&(app.state==='hosting'||app.state==='in_room')}
 
 function vapp(): VoxlinkApp {
   if (!app) app = new VoxlinkApp()

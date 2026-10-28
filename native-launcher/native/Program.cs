@@ -30,6 +30,7 @@ internal static class Program {
         MessageBox.Show("ZeroDistance 遇到异常，请重新打开。\n\n"+error.Message+"\n\n详细记录："+log,"ZeroDistance",MessageBoxButtons.OK,MessageBoxIcon.Error);
     }
     [STAThread] static void Main(string[] args){
+        AppContext.SetSwitch("Switch.System.IO.UseLegacyPathHandling",false);AppContext.SetSwitch("Switch.System.IO.BlockLongPaths",false);
         if(Array.IndexOf(args,"--native-service")>=0){
             using(var input=new StreamReader(Console.OpenStandardInput(),Encoding.UTF8))using(var output=new StreamWriter(Console.OpenStandardOutput(),new UTF8Encoding(false))){
                 try{string text=input.ReadToEnd();if(text.Length>96*1024*1024)throw new Exception("请求过大");var request=Json.Parse(text);output.Write(Json.Stringify(new {result=NativeServices.Execute(Json.Str(request,"operation"),Json.Args(request))}));}
@@ -38,7 +39,8 @@ internal static class Program {
         }
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
         Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
-        try{Application.Run(new LauncherWindow(args));}
+        if(UpdateBootstrap.TryStart(LauncherWindow.CurrentAppVersion,args))return;
+        try{Application.Run(new LauncherWindow(args));if(Environment.ExitCode==0)UpdateBootstrap.TryStart(LauncherWindow.CurrentAppVersion,args,true);}
         catch(Exception error){ReportFailure(args,error);Environment.ExitCode=1;}
     }
 }

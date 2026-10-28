@@ -24,6 +24,7 @@ import { externalProfile } from './yggdrasil'
 import { SkinProfileCache } from './skinProfileCache'
 import type { Account } from '../../shared/types'
 const profileCache = new SkinProfileCache(() => path.join(app.getPath('userData'), 'skin-cache'))
+export function releaseSkinProfileMemory(){profileCache.clearMemory()}
 
 const API = 'https://api.minecraftservices.com'
 /** 历史皮肤上限，超出删除最旧 */

@@ -13,19 +13,22 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.VisualBasic.FileIO;
 
-internal sealed class LauncherWindow : Form {
-    const string Origin="https://zerodistance-native.test/",Version="0.3.1";
+internal sealed partial class LauncherWindow : Form {
+    const string Origin="https://zerodistance-native.test/",Version="0.3.2";
+    public static string CurrentAppVersion {get{return Version;}}
     const string LegacyStorageUrl="https://zerodistance-native.local/__ui_migration.html";
-    readonly WebView2 browser=new WebView2();
+    WebView2 browser=new WebView2();
+    readonly System.Windows.Forms.Timer idleMemoryTimer=new System.Windows.Forms.Timer{Interval=5000};
+    bool memoryInactive;int interfaceGeneration;
     WebView2 splashBrowser;Form splash;CoreWebView2Environment environment;
     NativeStartup nativeStartup;
     readonly System.Windows.Forms.Timer revealTimer=new System.Windows.Forms.Timer{Interval=16};
     readonly Stopwatch revealClock=new Stopwatch();
-    readonly BackendHost engine;
+    BackendHost engine;
     Task engineStart;
     readonly string dataDirectory,noticeText,noticeHash;
     readonly object logSync=new object();
-    readonly bool qa,noDiscovery,ordinaryBrowser;readonly int debugPort;
+    readonly bool qa,noDiscovery,ordinaryBrowser,qaNetworkProxy,qaAutoUpdate;readonly int debugPort;
     readonly bool migrateUiStorage,forceStartupMotion,disableStartupAnimation;
     bool importingUiStorage,uiStorageCommitted;string migrationScript;
     readonly System.Windows.Forms.Timer timer=new System.Windows.Forms.Timer{Interval=100};
@@ -50,12 +53,13 @@ internal sealed class LauncherWindow : Form {
     static string Hash(string value){using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(value))).Replace("-","").ToLowerInvariant();}
     protected override CreateParams CreateParams {get{var value=base.CreateParams;value.Style|=0x00040000|0x00C00000|0x00020000|0x00010000;return value;}}
     protected override void WndProc(ref Message message){
+        if(qa&&message.Msg==0x8000+119){BeginInvoke(new Action(async()=>await RestoreFullInterface()));message.Result=IntPtr.Zero;return;}
         if(message.Msg==0x0083&&message.WParam!=IntPtr.Zero){message.Result=IntPtr.Zero;return;}
         base.WndProc(ref message);
     }
     public LauncherWindow(string[] args){
         AppDirectory=AppDomain.CurrentDomain.BaseDirectory;
-        qa=args.Contains("--qa");noDiscovery=(qa&&!args.Contains("--qa-scan-folders"))||args.Contains("--no-auto-discovery");
+        qa=args.Contains("--qa");qaNetworkProxy=qa&&args.Contains("--qa-network-proxy");qaAutoUpdate=qa&&args.Contains("--qa-auto-update");noDiscovery=(qa&&!args.Contains("--qa-scan-folders"))||args.Contains("--no-auto-discovery");
         ordinaryBrowser=qa&&args.Contains("--qa-ordinary-browser");
         forceStartupMotion=qa&&args.Contains("--qa-full-startup-motion");
         dataDirectory=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"ZeroDistance-Native");
@@ -71,7 +75,7 @@ internal sealed class LauncherWindow : Form {
         Opacity=0;
         Size=accepted?new Size(1360,860):new Size(800,740);MinimumSize=new Size(760,620);BackColor=Color.Black;
         try{Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);}catch{}
-        browser.Dock=DockStyle.Fill;browser.DefaultBackgroundColor=Color.Transparent;Controls.Add(browser);
+        browser.Dock=DockStyle.Fill;browser.DefaultBackgroundColor=Color.Black;Controls.Add(browser);
         engine=new BackendHost(this);
         Shown+=async delegate{if(qa)try{Json.Atomic(Path.Combine(dataDirectory,"startup-window.json"),new{opacity=Opacity,showInTaskbar=ShowInTaskbar,handle=Handle.ToInt64().ToString(),layered=(GetWindowLong(Handle,-20)&0x80000)!=0});}catch{}ApplyMaterial(this,true);if(accepted)StartNativeScene();await Initialize();};
         revealTimer.Tick+=delegate{
@@ -79,6 +83,7 @@ internal sealed class LauncherWindow : Form {
             if(p>=1){revealTimer.Stop();Opacity=1;FinishRenderingWarmup();}
         };
         Resize+=delegate{EmitVisibility();};VisibleChanged+=delegate{EmitVisibility();};
+        idleMemoryTimer.Tick+=delegate{idleMemoryTimer.Stop();if(memoryInactive&&!closing)engine.ReleaseIdleMemory();};
         FormClosing+=OnClosing;
         timer.Tick+=delegate{
             long now=clock.ElapsedMilliseconds;
@@ -100,7 +105,7 @@ internal sealed class LauncherWindow : Form {
             if(qa&&!ordinaryBrowser)options.AdditionalBrowserArguments="--remote-debugging-port="+debugPort+" --remote-debugging-address=127.0.0.1 --disable-features=CalculateNativeWinOcclusion --disable-renderer-backgrounding --disable-background-timer-throttling";
             // An accepted profile can load its engine alongside WebView2.
             // First-run consent still creates no backend process.
-            if(accepted)engineStart=StartBackend();
+            if(accepted&&engineStart==null)engineStart=StartBackend();
             environment=await CoreWebView2Environment.CreateAsync(null,Path.Combine(dataDirectory,"webview"),options);
             await ConfigureBrowser(browser,false);
             MarkBoot("webview");
@@ -130,17 +135,29 @@ internal sealed class LauncherWindow : Form {
     object ConsentState(){return new{version=Json.Str(Json.Parse(noticeText),"version"),remainingMs=Math.Max(0,3000-(int)readingMilliseconds),canAccept=accepted||readingMilliseconds>=3000,review=review};}
     void Post(WebView2 view,object message){if(closing||view==null||view.IsDisposed||view.CoreWebView2==null)return;try{view.CoreWebView2.PostWebMessageAsJson(Json.Stringify(message));}catch{}}
     void Emit(WebView2 view,string channel,params object[] args){Post(view,new{@event=channel,args=args});}
-    void EmitVisibility(){if(isMainPage)Emit(browser,"window:visibility",!prewarming&&Visible&&WindowState!=FormWindowState.Minimized);}
+    void EmitVisibility(){
+        if(!isMainPage)return;
+        bool inactive=!Visible||WindowState==FormWindowState.Minimized;
+        if(inactive!=memoryInactive){
+            memoryInactive=inactive;idleMemoryTimer.Stop();
+            try{if(browser.CoreWebView2!=null)browser.CoreWebView2.MemoryUsageTargetLevel=inactive?CoreWebView2MemoryUsageTargetLevel.Low:CoreWebView2MemoryUsageTargetLevel.Normal;}catch{}
+            if(inactive)idleMemoryTimer.Start();
+        }
+        Emit(browser,"window:visibility",!prewarming&&!inactive);
+    }
     async Task Receive(WebView2 view,bool isSplash,CoreWebView2WebMessageReceivedEventArgs e){
         if(!IsLocal(e.Source)||closing)return;object id=null;bool send=false;
         try{
             string input=e.TryGetWebMessageAsString();if(input.Length>144*1024*1024)throw new Exception("请求过大");var request=Json.Parse(input);id=Json.Get(request,"id");send=Json.Bool(request,"send");string channel=Json.Str(request,"channel");var args=Json.Args(request);
             if(channel.Length==0||channel.Length>120||channel.StartsWith("__")||args.Length>32)throw new Exception("无效功能请求");
             object result=null;
-            if(channel=="native:info")result=new{version=Version,engine="C# + WebView2 + compatibility backend",enginePid=engine.Pid,dataDirectory=dataDirectory,webview=environment.BrowserVersionString,qa=qa,uiSource="original-renderer",bundlesElectron=false,startup=nativeStartup==null?null:nativeStartup.Info(),windowOpacity=Opacity,windowHandle=Handle.ToInt64().ToString(),layered=(GetWindowLong(Handle,-20)&0x80000)!=0};
+            if(channel=="native:info")result=new{version=Version,engine="C# + WebView2 + compatibility backend",enginePid=engine.Pid,dataDirectory=dataDirectory,webview=environment.BrowserVersionString,qa=qa,uiSource="original-renderer",bundlesElectron=false,startup=nativeStartup==null?null:nativeStartup.Info(),windowOpacity=Opacity,windowVisible=Visible,windowState=WindowState.ToString(),prewarming=prewarming,uiReady=uiReady,windowHandle=Handle.ToInt64().ToString(),layered=(GetWindowLong(Handle,-20)&0x80000)!=0};
             else if(channel=="native:qaFocus"&&qa){WindowState=FormWindowState.Normal;Show();Activate();SetForegroundWindow(Handle);}
             else if(channel=="native:qaHide"&&qa){Hide();}
             else if(channel=="window:visibility")result=!prewarming&&Visible&&WindowState!=FormWindowState.Minimized;
+            else if(channel=="native:qaCore"&&qa)result=await engine.Invoke("__native:qaCore",new object[0]);
+            else if(channel=="native:qaLaunchRunning"&&qa){EngineEvent("event:launchState",new object[]{Json.Parse(Json.Stringify(new{status="running",launchId="qa-"+Guid.NewGuid().ToString("N"),versionId="qa",text="QA launch event"}))});result=new{ok=true};}
+            else if(channel=="window:lowMemoryReady"){if(lowMemoryReady!=null)lowMemoryReady.TrySetResult(true);}
             else if(channel=="consent:ready"){presented=true;previousTick=clock.ElapsedMilliseconds;result=ConsentState();}
             else if(channel=="consent:accept"){
                 if(review){review=false;browser.Source=new Uri(Origin+"index.html");result=new{ok=true};}
@@ -159,6 +176,8 @@ internal sealed class LauncherWindow : Form {
                     foreach(var item in files){var file=item as CoreWebView2File;if(file==null)throw new Exception("无效文件对象");paths.Add(file.Path);}result=paths;
                 }
                 else if(channel=="window:minimize")WindowState=FormWindowState.Minimized;
+                else if(channel=="window:lowMemory")result=await RequestLowMemory(false);
+                else if(channel=="window:lowMemoryBlocked")designBusy=args.Length>0&&args[0] is bool&&(bool)args[0];
                 else if(channel=="window:maximize")ToggleMaximize();
                 else if(channel=="window:drag"){Emit(browser,"window:caption-pointerdown");ReleaseCapture();SendMessage(Handle,0x00A1,new IntPtr(2),IntPtr.Zero);}
                 else if(channel=="window:resize"){int hit=Convert.ToInt32(args[0]);if(hit>=10&&hit<=17&&WindowState!=FormWindowState.Maximized){ReleaseCapture();SendMessage(Handle,0x00A1,new IntPtr(hit),IntPtr.Zero);}}
@@ -202,7 +221,7 @@ internal sealed class LauncherWindow : Form {
         // to one frame per second. Keep the real controller visible at zero
         // alpha behind the startup scene so its first painted frames run now.
         Opacity=0;Show();
-        var fallback=new System.Windows.Forms.Timer{Interval=30000};fallback.Tick+=delegate{fallback.Stop();fallback.Dispose();if(!splashAssembled&&!closing){Log("splash","启动首帧等待超过 30 秒");CloseSplash();RevealMain(false);if(!uiReady)MessageBox.Show(this,"界面初始化尚未完成，请查看 native-current.log。",Text);}};fallback.Start();
+        int generation=interfaceGeneration;var fallback=new System.Windows.Forms.Timer{Interval=30000};fallback.Tick+=delegate{fallback.Stop();fallback.Dispose();if(generation==interfaceGeneration&&!lowMemory&&!splashAssembled&&!closing){Log("splash","启动首帧等待超过 30 秒");CloseSplash();RevealMain(false);if(!uiReady)MessageBox.Show(this,"界面初始化尚未完成，请查看 native-current.log。",Text);}};fallback.Start();
     }
     Task EnsureBackendStarted(){if(engineStart==null)engineStart=StartBackend();return engineStart;}
     async Task StartBackend(){
@@ -211,10 +230,10 @@ internal sealed class LauncherWindow : Form {
             {"desktop",Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)},{"documents",Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)},
             {"downloads",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),"Downloads")}
         };
-        await engine.Start(new{executable=Application.ExecutablePath,appDirectory=AppDirectory,dataDirectory=dataDirectory,paths=paths,version=Version,hwnd=Handle.ToInt64().ToString(),display=DisplayInfo(),qa=qa,noDiscovery=noDiscovery});
+        await engine.Start(new{executable=Application.ExecutablePath,appDirectory=AppDirectory,dataDirectory=dataDirectory,paths=paths,version=Version,hwnd=Handle.ToInt64().ToString(),display=DisplayInfo(),qa=qa,qaNetworkProxy=qaNetworkProxy,qaAutoUpdate=qaAutoUpdate,noDiscovery=noDiscovery});
         MarkBoot("backend");
     }
-    void StartNativeScene(){if(disableStartupAnimation||nativeStartup!=null)return;try{bool reduce=false;try{reduce=Json.Bool(Json.Parse(File.ReadAllText(Path.Combine(dataDirectory,"settings.json"))),"reduceMotion");}catch{}nativeStartup=new NativeStartup(AppDirectory,dataDirectory,qa,RevealMain,reduce,forceStartupMotion);}catch(Exception error){Log("splash",error.Message);}}
+    void StartNativeScene(){if(restoringInterface||disableStartupAnimation||nativeStartup!=null)return;try{bool reduce=false;try{reduce=Json.Bool(Json.Parse(File.ReadAllText(Path.Combine(dataDirectory,"settings.json"))),"reduceMotion");}catch{}nativeStartup=new NativeStartup(AppDirectory,dataDirectory,qa,RevealMain,reduce,forceStartupMotion);}catch(Exception error){Log("splash",error.Message);}}
     async Task MigrateUiStorage(){
         if(!migrateUiStorage||migrationScript!=null)return;
         var core=browser.CoreWebView2;var loaded=new TaskCompletionSource<bool>();
@@ -243,7 +262,7 @@ internal sealed class LauncherWindow : Form {
         }catch(Exception error){Log("ui-storage",error.Message);}
     }
     async void FinishRenderingWarmup(){try{const int extended=-20,layered=0x80000;int style=GetWindowLong(Handle,extended);if((style&layered)!=0)SetWindowLong(Handle,extended,style&~layered);ApplyMaterial(this,darkTheme);await browser.CoreWebView2.CallDevToolsProtocolMethodAsync("Emulation.setFocusEmulationEnabled","{\"enabled\":false}");}catch(Exception error){Log("render",error.Message);}}
-    void RevealMain(bool animated){if(closing)return;prewarming=false;MarkBoot("reveal");try{Json.Atomic(Path.Combine(dataDirectory,"startup-performance.json"),bootTimings);}catch{}splashAssembled=true;ShowInTaskbar=true;if(animated){Opacity=0;Show();Activate();revealClock.Restart();revealTimer.Start();}else{Opacity=1;Show();Activate();FinishRenderingWarmup();}EmitVisibility();}
+    void RevealMain(bool animated){if(closing)return;if(restoringInterface){restoringInterface=false;LowMemoryState("restored",!backendPaused);}prewarming=false;MarkBoot("reveal");try{Json.Atomic(Path.Combine(dataDirectory,"startup-performance.json"),bootTimings);}catch{}splashAssembled=true;ShowInTaskbar=true;if(animated){Opacity=0;Show();Activate();revealClock.Restart();revealTimer.Start();}else{Opacity=1;Show();Activate();FinishRenderingWarmup();}EmitVisibility();}
     void PublishBoot(){if(nativeStartup!=null)nativeStartup.Publish(completedStages,uiReady);else if(uiReady&&!splashAssembled)RevealMain(false);}
     void CloseSplash(){if(nativeStartup!=null)nativeStartup.Dispose();if(splash!=null){splash.Close();splash.Dispose();splash=null;splashBrowser=null;}}
     void RestoreBoundsFromFile(){try{var saved=Json.Parse(File.ReadAllText(Path.Combine(dataDirectory,"window.json")));int w=Math.Max(960,Json.Int(saved,"width",1360)),h=Math.Max(620,Json.Int(saved,"height",860));Size=new Size(w,h);if(Json.Bool(saved,"maximized"))ToggleMaximize();}catch{}}
@@ -256,9 +275,9 @@ internal sealed class LauncherWindow : Form {
             if(isMainPage){var bounds=WindowState==FormWindowState.Normal?ClientSize:RestoreBounds.Size;try{Json.Atomic(Path.Combine(dataDirectory,"window.json"),new{width=bounds.Width,height=bounds.Height,maximized=WindowState==FormWindowState.Maximized});}catch{}}
             Hide();CloseSplash();browser.Dispose();await engine.Stop();Close();return;
         }
-        closing=true;timer.Stop();revealTimer.Stop();CloseSplash();
+        closing=true;timer.Stop();revealTimer.Stop();idleMemoryTimer.Stop();idleMemoryTimer.Dispose();if(lowMemoryTray!=null)lowMemoryTray.Dispose();CloseSplash();
     }
-    public void EngineEvent(string channel,object[] args){if(IsDisposed||closing)return;try{BeginInvoke(new Action(()=>Emit(browser,channel,args)));}catch{}}
+    public void EngineEvent(string channel,object[] args){if(IsDisposed||closing)return;try{BeginInvoke(new Action(()=>{ObserveLowMemoryLaunch(channel,args);if(!lowMemory)Emit(browser,channel,args);}));}catch{}}
     public void BackendFailed(){if(IsDisposed||closing)return;try{BeginInvoke(new Action(()=>{if(!allowClose){CloseSplash();RevealMain(false);MessageBox.Show(this,"功能后端已退出，请重新打开软件。已有 Minecraft 进程会继续运行。",Text,MessageBoxButtons.OK,MessageBoxIcon.Error);}}));}catch{}}
     public void NativeRequest(object request){
         if(IsDisposed||closing)return;
@@ -272,6 +291,11 @@ internal sealed class LauncherWindow : Form {
     static void OpenExternal(string input){Uri url;if(!Uri.TryCreate(input,UriKind.Absolute,out url)||(url.Scheme!="https"&&url.Scheme!="http")||url.UserInfo!="")throw new Exception("外部链接无效");Process.Start(new ProcessStartInfo(url.AbsoluteUri){UseShellExecute=true});}
     async Task<object> NativeOperation(string operation,object[] args){
         if(!accepted)throw new Exception("尚未同意使用声明");
+        if(operation=="network:resolveProxy"){
+            var lookup=Task.Run(()=>NativeServices.Execute(operation,args));
+            if(await Task.WhenAny(lookup,Task.Delay(3000))!=lookup)return null;
+            var route=await lookup;if(qaNetworkProxy)try{Json.Atomic(Path.Combine(dataDirectory,"qa-proxy-state.json"),new{seen=true,hasProxy=route!=null});}catch{}return route;
+        }
         if(operation=="dialog:open"){
             var options=args[0];var properties=Json.Get(options,"properties") as object[]??new object[0];
             if(properties.Contains("openDirectory")){using(var dialog=new FolderBrowserDialog{Description=Json.Str(options,"title"),ShowNewFolderButton=true}){if(Directory.Exists(Json.Str(options,"defaultPath")))dialog.SelectedPath=Json.Str(options,"defaultPath");bool ok=dialog.ShowDialog(this)==DialogResult.OK;return new{canceled=!ok,filePaths=ok?new[]{dialog.SelectedPath}:new string[0]};}}
@@ -314,19 +338,28 @@ internal sealed class LauncherWindow : Form {
     }
     async void Resource(object sender,CoreWebView2WebResourceRequestedEventArgs e){
         var deferral=e.GetDeferral();
+        var responseEnvironment=environment;
         try{
             try{
                 if(e.Request.Method!="GET")throw new Exception("请求未获授权");
                 var uri=new Uri(e.Request.Uri);
-                if(importingUiStorage&&uri.AbsoluteUri==LegacyStorageUrl){var html=Encoding.UTF8.GetBytes("<!doctype html><html><head><meta charset=\"utf-8\"><title>ZeroDistance</title></head><body></body></html>");e.Response=environment.CreateWebResourceResponse(new MemoryStream(html),200,"OK","Content-Type: text/html; charset=utf-8\r\nContent-Security-Policy: default-src 'none'\r\nCache-Control: no-store");return;}
+                if(importingUiStorage&&uri.AbsoluteUri==LegacyStorageUrl){var html=Encoding.UTF8.GetBytes("<!doctype html><html><head><meta charset=\"utf-8\"><title>ZeroDistance</title></head><body></body></html>");e.Response=responseEnvironment.CreateWebResourceResponse(new MemoryStream(html),200,"OK","Content-Type: text/html; charset=utf-8\r\nContent-Security-Policy: default-src 'none'\r\nCache-Control: no-store");return;}
                 if(!accepted||uri.Scheme!="https"||!uri.IsDefaultPort||(uri.Host!="zerodistance-assets.local"&&uri.Host!="zerodistance-plugins.local"))throw new Exception("无效来源");
                 object result;
                 if(uri.Host=="zerodistance-assets.local"){if(uri.AbsolutePath!="/image")throw new Exception("无效图片请求");var query=System.Web.HttpUtility.ParseQueryString(uri.Query);result=await engine.Invoke("__native:asset",new object[]{query["path"]??""});}
                 else{string[] parts=uri.AbsolutePath.Split('/');if(parts.Length!=3||parts[2]!="main.js")throw new Exception("无效插件请求");result=await engine.Invoke("__native:plugin",new object[]{Uri.UnescapeDataString(parts[1])});}
-                var bytes=Convert.FromBase64String(Json.Str(result,"data"));e.Response=environment.CreateWebResourceResponse(new MemoryStream(bytes),200,"OK","Content-Type: "+Json.Str(result,"type")+"\r\nAccess-Control-Allow-Origin: "+Origin.TrimEnd('/')+"\r\nX-Content-Type-Options: nosniff\r\nCache-Control: no-store");
-            }catch(Exception error){Log("asset",error.Message);e.Response=environment.CreateWebResourceResponse(new MemoryStream(new byte[0]),404,"Not Found","Content-Type: text/plain");}
+                if(closing||lowMemory)return;
+                string type=Json.Str(result,"type");Stream body;
+                if(uri.Host=="zerodistance-assets.local"){
+                    string file=Json.Str(result,"file");int width;var query=System.Web.HttpUtility.ParseQueryString(uri.Query);
+                    if(Int32.TryParse(query["width"],out width)&&width>=32&&width<=512){string thumb=await ImageThumbnails.Get(file,dataDirectory,width);if(thumb!=file){type="image/png";file=thumb;}}
+                    if(closing||lowMemory)return;
+                    body=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete,65536,FileOptions.SequentialScan);
+                }else body=new MemoryStream(Convert.FromBase64String(Json.Str(result,"data")));
+                try{e.Response=responseEnvironment.CreateWebResourceResponse(body,200,"OK","Content-Type: "+type+"\r\nAccess-Control-Allow-Origin: "+Origin.TrimEnd('/')+"\r\nX-Content-Type-Options: nosniff\r\nCache-Control: no-store");}catch{body.Dispose();throw;}
+            }catch(Exception error){if(closing||lowMemory)return;Log("asset",error.Message);e.Response=responseEnvironment.CreateWebResourceResponse(new MemoryStream(new byte[0]),404,"Not Found","Content-Type: text/plain");}
         // Dispose completes the deferred WebView2 event. Calling Complete as
         // well completes it twice and raises E_ILLEGAL_METHOD_CALL.
-        }finally{deferral.Dispose();}
+        }catch(Exception error){if(!closing&&!lowMemory)Log("asset",error.Message);}finally{try{deferral.Dispose();}catch{}}
     }
 }

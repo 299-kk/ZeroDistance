@@ -18,6 +18,7 @@ export interface TaskRecord {
 }
 
 const tasks = new Map<string, TaskRecord>()
+export function activeTaskCount(): number { return tasks.size }
 let seq = 0
 
 interface InternalTaskRecord extends TaskRecord {

@@ -10,7 +10,9 @@
     "generated": true,
     "derivation": "OpenAI image_gen 生成；WebP quality 84 压缩",
     "position": "center 50%",
-    "sha256": "956c37bf55a6817298c670c3dfdca79a1f7c9122aba52affcfc5ac091d9bc1fb"
+    "sha256": "956c37bf55a6817298c670c3dfdca79a1f7c9122aba52affcfc5ac091d9bc1fb",
+    "thumbnailFile": "thumb-ai-cherry-valley.webp",
+    "thumbnailSha256": "15a3f43194fb7c615382b90cd7132c68eeeb0f0e2e4612b3ea2aca5d66fd3e20"
   },
   {
     "key": "builtin:landscape-ai-alpine-lake",
@@ -23,7 +25,9 @@
     "generated": true,
     "derivation": "OpenAI image_gen 生成；WebP quality 84 压缩",
     "position": "center 50%",
-    "sha256": "f05a0db81142b6c0476d6f64ba88bbf20020e9452c55da62c3edc8903777b526"
+    "sha256": "f05a0db81142b6c0476d6f64ba88bbf20020e9452c55da62c3edc8903777b526",
+    "thumbnailFile": "thumb-ai-alpine-lake.webp",
+    "thumbnailSha256": "e82317c232372adb703a56348937badc3cbd029bcfdda67f5afb1ffbcd80e6c8"
   },
   {
     "key": "builtin:landscape-ai-night-camp",
@@ -36,7 +40,9 @@
     "generated": true,
     "derivation": "OpenAI image_gen 生成；WebP quality 84 压缩",
     "position": "center 50%",
-    "sha256": "76bd2bed92c5c4984f094357ca168da5e8fac2d207f68fe3e843a1fdc7023df4"
+    "sha256": "76bd2bed92c5c4984f094357ca168da5e8fac2d207f68fe3e843a1fdc7023df4",
+    "thumbnailFile": "thumb-ai-night-camp.webp",
+    "thumbnailSha256": "259408f478485aafc94a643f25d43ad16c284d0ae11842ca2adbaf03268ad245"
   },
   {
     "key": "builtin:landscape-ai-coastal-village",
@@ -49,6 +55,8 @@
     "generated": true,
     "derivation": "OpenAI image_gen 生成；WebP quality 84 压缩",
     "position": "center 50%",
-    "sha256": "738a198786517a9902f44e217ee8c0e8c726a315543a08500c88132797cd224f"
+    "sha256": "738a198786517a9902f44e217ee8c0e8c726a315543a08500c88132797cd224f",
+    "thumbnailFile": "thumb-ai-coastal-village.webp",
+    "thumbnailSha256": "8107a4ef2a4162c05d02d8c344bfdcd431879276bdd3bb280d21a520413a58e5"
   }
 ]

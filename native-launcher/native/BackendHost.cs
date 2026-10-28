@@ -14,13 +14,13 @@ internal sealed class BackendHost {
     public int Pid {get{return process==null?0:process.Id;}}
     public BackendHost(LauncherWindow window){owner=window;}
     public async Task Start(object config){
-        var info=new ProcessStartInfo(Path.Combine(owner.AppDirectory,"engine","node.exe"),"\""+Path.Combine(owner.AppDirectory,"engine","main.cjs")+"\""){
+        var info=new ProcessStartInfo(Path.Combine(owner.AppDirectory,"engine","node.exe"),"--max-semi-space-size=4 --expose-gc \""+Path.Combine(owner.AppDirectory,"engine","main.cjs")+"\""){
             UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,
             StandardOutputEncoding=Encoding.UTF8,StandardErrorEncoding=Encoding.UTF8,WorkingDirectory=Path.Combine(owner.AppDirectory,"engine")
         };
         info.EnvironmentVariables["ZERO_DISTANCE_NATIVE_CONFIG"]=Json.Stringify(config);
         // Do not inherit development hooks or flags into the distributed private engine.
-        foreach(string key in new[]{"NODE_OPTIONS","NODE_PATH","ELECTRON_RUN_AS_NODE","ELECTRON_RENDERER_URL","ZERO_DISTANCE_DATA_DIR","ZERO_DISTANCE_DISCOVERY_ROOTS"})info.EnvironmentVariables.Remove(key);
+        foreach(string key in new[]{"NODE_OPTIONS","NODE_PATH","NODE_TLS_REJECT_UNAUTHORIZED","ELECTRON_RUN_AS_NODE","ELECTRON_RENDERER_URL","ZERO_DISTANCE_DATA_DIR","ZERO_DISTANCE_DISCOVERY_ROOTS"})info.EnvironmentVariables.Remove(key);
         info.EnvironmentVariables["NODE_USE_SYSTEM_CA"]="1";
         // Keep imports, installer stages and download scratch files inside the
         // launcher profile so uninstall can remove them without scanning TEMP.
@@ -53,6 +53,7 @@ internal sealed class BackendHost {
         try{Write(new{id=id,channel=channel,args=args});return await completion.Task;}catch{lock(sync){pending.Remove(id);}throw;}
     }
     public void Send(string channel,object[] args){Write(new{send=true,channel=channel,args=args});}
+    public void ReleaseIdleMemory(){try{Write(new{control="idle"});}catch{}}
     void FailPending(){
         TaskCompletionSource<object>[] requests;
         lock(sync){requests=new TaskCompletionSource<object>[pending.Count];pending.Values.CopyTo(requests,0);pending.Clear();}

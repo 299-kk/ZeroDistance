@@ -31,8 +31,11 @@ declare global {
 }
 
 let started = false
+let lastHidden = false
 
 function applyHiddenState(hidden: boolean): void {
+  if (hidden === lastHidden) return
+  lastHidden = hidden
   for (const releasable of releasables) {
     try {
       if (hidden) releasable.release()
@@ -58,6 +61,7 @@ export function startIdleTrim(): void {
   document.addEventListener('visibilitychange', () => applyHiddenState(document.hidden))
   try {
     window.kamucl.on('kamucl:mem-trim', () => applyHiddenState(true))
+    window.kamucl.on('window:visibility', visible => applyHiddenState(visible === false || document.hidden))
   } catch {
     /* 桥接不可用（测试环境）时仅靠 visibilitychange 工作 */
   }

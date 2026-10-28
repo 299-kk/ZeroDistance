@@ -13,6 +13,8 @@ export interface LaunchImage {
   /** Optional user-supplied asset; generated defaults are required and distributed. */
   optional?: boolean
   generated?: boolean
+  thumbnailFile?: string
+  thumbnailSha256?: string
 }
 
 /** Default AI-generated backgrounds and their public provenance records. */

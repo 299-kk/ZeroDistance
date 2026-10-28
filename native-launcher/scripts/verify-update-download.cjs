@@ -1,0 +1,32 @@
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict'),{build}=require('esbuild')
+;(async()=>{
+const root=path.resolve(__dirname,'../..'),qa=path.join(root,'.qa/update-download',crypto.randomUUID()),data=path.join(qa,'profile'),game=path.join(qa,'game'),passed=[],events=[]
+fs.mkdirSync(data,{recursive:true});fs.mkdirSync(game)
+fs.writeFileSync(path.join(data,'settings.json'),JSON.stringify({folders:[{path:game,name:'Update QA',isDefault:true}],gameDir:game,activeFolder:game,gameFolderPolicyVersion:1,autoUpdate:false,updateSource:'auto',updateMirrorUrl:'https://mirror.example/'}))
+const keys=crypto.generateKeyPairSync('rsa',{modulusLength:2048}),trust={...require('../../src/shared/nativeUpdateTrust.json'),publicKey:keys.publicKey.export({type:'spki',format:'pem'})},good=Buffer.alloc(4*1024*1024,73),asset={name:'ZeroDistance-9.9.9-windows-x64.zip',url:'https://github.com/299-kk/ZeroDistance/releases/download/v9.9.9/ZeroDistance-9.9.9-windows-x64.zip',size:good.length,sha256:crypto.createHash('sha256').update(good).digest('hex')},payload={format:1,product:'ZeroDistance',platform:'win32-x64',version:'9.9.9',publishedAt:'2026-10-27T00:00:00Z',body:'Isolated transport test',asset},bytes=Buffer.from(JSON.stringify(payload)),envelope={payload:bytes.toString('base64'),signature:crypto.sign('RSA-SHA256',bytes,keys.privateKey).toString('base64')}
+fs.writeFileSync(path.join(qa,'trust.json'),JSON.stringify(trust));fs.writeFileSync(path.join(qa,'http.ts'),'export const httpFetch=(url,init)=>globalThis.__nativeUpdateFetch(url,init)')
+const shim=path.join(qa,'electron.ts');fs.writeFileSync(shim,`export * from ${JSON.stringify(path.join(root,'native-launcher/backend/electron.ts'))};export const nativeCall=async()=>null;`)
+fs.writeFileSync(path.join(qa,'entry.ts'),`export * from ${JSON.stringify(path.join(root,'native-launcher/backend/updater.ts'))};export {ipcMain,mainWindow,config} from ${JSON.stringify(shim)};export {saveSettings} from ${JSON.stringify(path.join(root,'src/main/core/settings.ts'))};export {cancelTaskAndWait} from ${JSON.stringify(path.join(root,'src/main/core/tasks.ts'))};`)
+process.env.ZERO_DISTANCE_NATIVE_CONFIG=JSON.stringify({version:'0.3.1',dataDirectory:data,appDirectory:path.join(root,'native-launcher/out'),paths:{appData:data,home:data},qa:true})
+const output=path.join(qa,'test.cjs');await build({entryPoints:[path.join(qa,'entry.ts')],outfile:output,bundle:true,platform:'node',format:'cjs',target:'node24',alias:{electron:shim},plugins:[{name:'isolated-update-transport',setup(build){build.onResolve({filter:/^\.\/electron$/},args=>args.importer===path.join(root,'native-launcher/backend/updater.ts')?{path:shim}:null);build.onResolve({filter:/httpClient(?:\.ts)?$/},()=>({path:path.join(qa,'http.ts')}));build.onResolve({filter:/nativeUpdateTrust\.json$/},()=>({path:path.join(qa,'trust.json')}))}}],external:['koffi']})
+const api=require(output);api.mainWindow.webContents.send=(channel,value)=>events.push({channel,value});api.registerNativeUpdates()
+let mode='fallback',requests=[],started
+global.__nativeUpdateFetch=async(url,init={})=>{
+ if(url.startsWith('https://api.github.com/'))return new Response(JSON.stringify([{tag_name:'v9.9.9',assets:[{name:'ZeroDistance-update.json'}]}]))
+ if(url.endsWith('ZeroDistance-update.json'))return new Response(JSON.stringify(envelope))
+ requests.push(url)
+ if(mode==='fallback'&&!url.startsWith('https://mirror.example/'))return new Response('unavailable',{status:503})
+ if(mode==='corrupt')return new Response(Buffer.alloc(good.length,74))
+ if(mode==='cancel')return new Response(new ReadableStream({start(controller){controller.enqueue(good.subarray(0,100));init.signal.addEventListener('abort',()=>controller.error(new Error('cancelled')),{once:true});started?.()}}))
+ let offset=0;return new Response(new ReadableStream({pull(controller){if(offset===good.length){controller.close();return;}const end=Math.min(offset+65536,good.length);controller.enqueue(good.subarray(offset,end));offset=end}}))
+}
+const pass=t=>{passed.push(t);console.log('PASS '+t)},done=async id=>{for(let i=0;i<500;i++){const event=events.find(e=>e.channel==='event:taskDone'&&e.value.taskId===id);if(event)return event.value;await new Promise(r=>setTimeout(r,10))}throw Error('Update task did not finish')}
+async function main(){
+ const result=await api.checkNativeUpdate(true);assert(result.ok&&result.hasUpdate);let task=api.ipcMain.handlers.get('update:start')({},result.release,'upgrade');assert((await done(task.taskId)).ok);assert.equal(requests.length,2);assert(requests[0].startsWith('https://github.com/'));assert(requests[1].startsWith('https://mirror.example/'));const ready=api.pendingNativeUpdate();assert(ready);assert.deepEqual(fs.readFileSync(ready.file),good);pass('Real native download task streams bytes, falls back from GitHub failure to mirror, verifies SHA-256 and stages the complete package')
+ mode='corrupt';requests=[];task=api.ipcMain.handlers.get('update:start')({},result.release,'upgrade');assert.equal((await done(task.taskId)).ok,false);assert.equal(requests.length,2);assert.deepEqual(fs.readFileSync(ready.file),good);assert(!fs.existsSync(ready.file+'.part'));pass('Corrupt data from both sources never replaces the previously verified ready package')
+ mode='cancel';requests=[];const opened=new Promise(r=>started=r);task=api.ipcMain.handlers.get('update:start')({},result.release,'upgrade');await opened;await api.cancelTaskAndWait(task.taskId);assert.equal((await done(task.taskId)).ok,false);assert.equal(requests.length,1);assert.deepEqual(fs.readFileSync(ready.file),good);assert(!fs.existsSync(ready.file+'.part'));pass('Cancelling a stalled transfer closes its stream and does not continue to a mirror or discard an older verified update')
+ mode='fallback';events.length=0;requests=[];api.saveSettings({autoUpdate:true});api.config.qa=false;api.ipcMain.emit('boot:renderer-ready');for(let n=0;n<500&&!events.some(e=>e.channel==='event:taskDone');n++)await new Promise(r=>setTimeout(r,10));assert(events.some(e=>e.channel==='event:taskDone'&&e.value.ok));assert(!events.some(e=>e.channel==='event:updatePrompt'));assert.deepEqual(fs.readFileSync(ready.file),good);pass('Automatic background checking downloads the signed update without opening an update prompt')
+ fs.writeFileSync(path.join(qa,'RESULT.json'),JSON.stringify({ok:true,passed},null,2))
+}
+await main()
+})().catch(error=>{console.error(error);process.exitCode=1})

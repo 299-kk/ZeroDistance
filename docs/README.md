@@ -7,6 +7,10 @@
 | [架构说明](ARCHITECTURE.md) | C#、WebView2、共用前端与 Node.js 业务边界 |
 | [测试与验证](TESTING.md) | 自动检查、GUI、私有样例与实际环境的区别 |
 | [发布检查](RELEASING.md) | 版本、隐私、素材许可、构建与交付 |
+| [低占用与内存报告](MEMORY_2026-10-27.md) | 模式入口、核心保留、恢复、实测口径及限制 |
+| [签名更新](NATIVE_UPDATES.md) | GitHub、镜像回退、应用恢复及发布密钥 |
+| [更新安全与静默更新](UPDATE_SECURITY_2026-10-27.md) | 攻击边界、依赖修补、助手指纹、密钥权限与退出交接 |
+| [更新网络实测](UPDATE_NETWORK_TEST_2026-10-28.md) | GitHub、镜像、系统代理、断连与续传验证 |
 | [贡献说明](../CONTRIBUTING.md) | Issue、PR、测试及来源要求 |
 | [安全政策](../SECURITY.md) | 私密漏洞报告和敏感信息处理 |
 | [AI 制作说明](AI_PROVENANCE.md) | 二次开发范围、工具、背景生成与维护责任 |

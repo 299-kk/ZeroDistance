@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict')
 const root=path.resolve(__dirname,'..'),version=require('../native-launcher/package.json').version
-const documents=['README.md','START_HERE.md','CONTRIBUTING.md','SECURITY.md','docs/README.md','docs/PRODUCT.md','docs/DEVELOPMENT.md','docs/ARCHITECTURE.md','docs/TESTING.md','docs/RELEASING.md','docs/VISUAL_ASSETS.md','docs/CORRESPONDING_SOURCE.md','native-launcher/README.md']
+const documents=['README.md','START_HERE.md','CONTRIBUTING.md','SECURITY.md','docs/README.md','docs/PRODUCT.md','docs/DEVELOPMENT.md','docs/ARCHITECTURE.md','docs/TESTING.md','docs/RELEASING.md','docs/VISUAL_ASSETS.md','docs/CORRESPONDING_SOURCE.md','docs/MEMORY_2026-10-27.md','docs/NATIVE_UPDATES.md','native-launcher/README.md']
 for(const file of documents){
  const text=fs.readFileSync(path.join(root,file),'utf8')
  for(const match of text.matchAll(/\[[^\]\n]*\]\(([^)]+)\)/g)){

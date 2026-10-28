@@ -169,13 +169,13 @@ SectionEnd
  const makensis=process.env.ZERO_DISTANCE_MAKENSIS||compiler(path.join(process.env.LOCALAPPDATA,'electron-builder/Cache/nsis-3.0.4.1'));assert(makensis,'Set ZERO_DISTANCE_MAKENSIS to NSIS 3 makensis.exe')
  const nsi=path.join(cache,'native-launcher.nsi');fs.writeFileSync(nsi,'\ufeff'+script);execFileSync(makensis,['/V2',nsi],{stdio:'inherit',windowsHide:true,timeout:180000})
  }
- const publicImages=new Set(require('../../src/shared/landscape-images.json').filter(image=>image.generated===true).map(image=>'src/renderer/src/assets/launch/'+image.file))
+ const publicImages=new Set(require('../../src/shared/landscape-images.json').filter(image=>image.generated===true).flatMap(image=>[image.file,...(image.thumbnailFile?[image.thumbnailFile]:[])].map(file=>'src/renderer/src/assets/launch/'+file)))
  const expectedPrefixes=[...publicImages].map(file=>'ui/assets/'+path.basename(file,'.webp')+'-')
  assert(!entries.some(e=>e.name.startsWith('ui/assets/landscape-')&&!expectedPrefixes.some(prefix=>e.name.startsWith(prefix))),'Unlisted background must not enter the release')
  const source=new Zip(),exclude=new Set(['node_modules','.qa','.git','.cache','out','release','素材','migration-proof'])
  const allowed=name=>(!name.startsWith('src/renderer/src/assets/launch/')||publicImages.has(name))&&!name.startsWith('docs/screenshots/')&&!/^docs\/validation-1\.1\.7\/.*\.(png|wav|webm)$/.test(name)&&!/^bridge\/(build|dist)\//.test(name)&&!/(^|\/)(accounts|settings|consent|window)\.json$|(^|\/)\.env(?:\.|$)|\.(exe|dll|jar|zip|7z|arw|pem|key|pfx|p12|log)$/i.test(name)
  function add(dir){for(const e of fs.readdirSync(dir,{withFileTypes:true})){if(exclude.has(e.name)||e.isSymbolicLink())continue;const file=path.join(dir,e.name),name=path.relative(root,file).replaceAll('\\','/');if(e.isDirectory())add(file);else if(allowed(name))source.addFile(name,fs.readFileSync(file))}}
- for(const dir of ['.github','src','scripts','tests','build','licenses','docs','lan-agent','bridge','native','native-launcher'])if(fs.existsSync(path.join(root,dir)))add(path.join(root,dir))
+ for(const dir of ['.github','updates','src','scripts','tests','build','licenses','docs','lan-agent','bridge','native','native-launcher'])if(fs.existsSync(path.join(root,dir)))add(path.join(root,dir))
  for(const name of ['README.md','START_HERE.md','CURRENT_STATUS.md','FEATURE_AUDIT.md','CONTRIBUTING.md','SECURITY.md','.gitignore','LICENSE','THIRD_PARTY_NOTICES.md','AGENTS.md','package.json','package-lock.json','electron.vite.config.ts','tsconfig.json'])if(fs.existsSync(path.join(root,name)))source.addFile(name,fs.readFileSync(path.join(root,name)))
  source.addFile('README-SOURCE.txt',Buffer.from('ZeroDistance 对应源码。请先阅读 README.md 和 docs/DEVELOPMENT.md。运行 npm ci 与 npm run build:native。系统 WebView2 提供浏览器运行时，业务后端仍包含 Node.js 兼容引擎。包含四张 AI 生成背景及生成提示记录，保留 KAMUCL 与第三方许可。\n'))
  const sourceFile=path.join(release,product+'-source.zip');source.writeZip(sourceFile)

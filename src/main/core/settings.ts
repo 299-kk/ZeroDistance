@@ -54,6 +54,7 @@ function defaults(): Settings {
     defaultIsolation: true,
     reduceMotion: false,
     disableStartupAnimation: false,
+    lowMemoryAfterLaunch: false,
     msClientId: DEFAULT_MS_CLIENT_ID,
     theme: 'transparent',
     custom: structuredClone(DEFAULT_CUSTOM_THEME),
@@ -64,7 +65,7 @@ function defaults(): Settings {
     launchThumbnail: structuredClone(DEFAULT_LAUNCH_THUMBNAIL),
     skinEditorPalette: normalizeSkinPalettePreferences(undefined),
     closeAfterLaunch: false,
-    autoUpdate: false,
+    autoUpdate: true,
     configVersion: 1
   }
 }

@@ -45,6 +45,7 @@ logs/
 !src/renderer/src/assets/launch/
 src/renderer/src/assets/launch/*
 !src/renderer/src/assets/launch/landscape-ai-*.webp
+!src/renderer/src/assets/launch/thumb-ai-*.webp
 docs/screenshots/
 docs/validation-1.1.7/**/*.png
 docs/validation-1.1.7/**/*.wav

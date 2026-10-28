@@ -3,5 +3,5 @@ const sources = import.meta.glob<string>('./assets/launch/*.{webp,jpg,jpeg,png,a
   eager: true, query: '?url', import: 'default'
 })
 export const builtInLaunchImages = BUILTIN_LAUNCH_IMAGES
-  .map(image => ({ ...image, src: sources[`./assets/launch/${image.file}`] }))
+  .map(image => ({ ...image, src: sources[`./assets/launch/${image.file}`], thumbnailSrc: image.thumbnailFile ? sources[`./assets/launch/${image.thumbnailFile}`] : undefined }))
   .filter(image => !!image.src)

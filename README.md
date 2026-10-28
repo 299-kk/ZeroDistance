@@ -1,6 +1,6 @@
 # ZeroDistance
 
-面向 Windows 的 Minecraft Java 版启动器，基于 [KAMUCL](https://github.com/YUN-SAN3/KAMUCL) 开发。当前版本 **0.3.1 Preview**，从 2026 年 10 月 22 日开始预览测试。
+面向 Windows 的 Minecraft Java 版启动器，基于 [KAMUCL](https://github.com/YUN-SAN3/KAMUCL) 开发。当前版本为 **0.3.2 Preview**，仍在预览测试中。
 
 保留原有 Vue 界面、主题、3D 皮肤预览和资源管理体验，使用 C# / .NET Framework 4.8 与系统 WebView2 提供桌面窗口。游戏业务仍通过随附的 Node.js 引擎运行，尚未全部迁移为 C#。发行包不内置 Electron 或 Chromium。
 
@@ -10,8 +10,8 @@
 
 需要 Windows 10/11 x64、.NET Framework 4.8 和 Microsoft Edge WebView2 Runtime。Java 和游戏文件按需下载。
 
-- [ZeroDistance-0.3.1-Setup.exe](https://github.com/299-kk/ZeroDistance/releases/download/v0.3.1/ZeroDistance-0.3.1-Setup.exe)：安装向导可选择目录，默认创建桌面快捷方式，可取消。
-- [ZeroDistance-0.3.1-windows-x64.zip](https://github.com/299-kk/ZeroDistance/releases/download/v0.3.1/ZeroDistance-0.3.1-windows-x64.zip)：完整解压后运行 ZeroDistance.exe，请保留随附文件。
+- [Windows 安装版](https://github.com/299-kk/ZeroDistance/releases/download/v0.3.2/ZeroDistance-0.3.2-Setup.exe)：安装向导可选择目录，默认创建桌面快捷方式，可取消。
+- [Windows ZIP 版](https://github.com/299-kk/ZeroDistance/releases/download/v0.3.2/ZeroDistance-0.3.2-windows-x64.zip)：完整解压后运行 ZeroDistance.exe，请保留随附文件。
 
 安装包可从 [GitHub Releases](https://github.com/299-kk/ZeroDistance/releases) 下载，本地保留同一版本及 SHA-256。预览版仍在测试。首次打开需在前台阅读使用声明满三秒并主动同意；声明更新后需重新同意。卸载默认删除启动器账号、设置、缓存、日志和软件注册信息，保留游戏与存档。
 
@@ -23,7 +23,9 @@
 - FRP 内网穿透、VoxLink 房间和基于 EasyTier 的虚拟局域网；版本设置提供局域网主机验证开关。
 - 高清启动动画、青柠默认主题、照片轮播、本地资源管理与皮肤编辑器。
 
-服务可用性和网络环境会影响登录、下载与联机。自动更新尚未接入，更新时使用新的安装包。详细使用条件及测试边界见 [产品说明](docs/PRODUCT.md) 与 [测试说明](docs/TESTING.md)。
+设置 → 行为与登录可手动进入低占用模式，或选择游戏启动后自动进入。该模式释放 WebView2，保留已有联机核心，恢复后回到原界面。无活动核心时本机私有内存约 30 MiB，持续 TCP 测试约 72 MiB；含共享页的总工作集和真实联机子进程可能超过 100 MB。详见 [内存测试及使用](docs/MEMORY_2026-10-27.md)。
+
+本版接入 GitHub 签名更新与镜像回退，后台下载，正常退出后静默替换，下次打开生效；0.3.1 及更早版本需先手动升级一次。见 [更新流程](docs/NATIVE_UPDATES.md)。服务可用性和网络环境会影响登录、下载与联机，详细边界见 [产品说明](docs/PRODUCT.md) 与 [测试说明](docs/TESTING.md)。
 
 ## 构建
 

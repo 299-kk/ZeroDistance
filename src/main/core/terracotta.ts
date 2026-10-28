@@ -81,6 +81,7 @@ let disposedByUser = false
 let starting = false
 let operation = 0
 let installController: AbortController | null = null
+export function hasActiveTerracottaServices():boolean{return !!proc||!!installController||starting||stopping}
 
 function emit(type: 'log' | 'ready' | 'error' | 'stopped' | 'status', data: unknown): void {
   for (const win of BrowserWindow.getAllWindows()) {

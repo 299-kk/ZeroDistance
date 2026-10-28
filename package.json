@@ -1,13 +1,13 @@
 {
   "name": "zero-distance",
   "productName": "ZeroDistance",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "ZeroDistance · Minecraft Java 启动器",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "test": "tsx --test tests/default-game-folder.test.ts tests/mrpack.test.ts tests/mod-compatibility.test.ts tests/mod-workflow.test.ts tests/frp-manager.test.ts tests/frp-worker.test.ts tests/instance-isolation.test.ts tests/microsoft-tls.test.ts tests/gallery-zero-distance.test.ts tests/library-012.test.ts tests/skin3d-parity.test.ts tests/skin-editor-118.test.ts tests/skin-palette-preferences.test.ts tests/fallback-skin-1066.test.ts tests/consent.test.ts tests/zero-020.test.ts tests/lan-authentication.test.ts",
+    "test": "tsx --test tests/default-game-folder.test.ts tests/mrpack.test.ts tests/mod-compatibility.test.ts tests/mod-workflow.test.ts tests/frp-manager.test.ts tests/frp-worker.test.ts tests/instance-isolation.test.ts tests/microsoft-tls.test.ts tests/gallery-zero-distance.test.ts tests/library-012.test.ts tests/skin3d-parity.test.ts tests/skin-editor-118.test.ts tests/skin-palette-preferences.test.ts tests/fallback-skin-1066.test.ts tests/consent.test.ts tests/zero-020.test.ts tests/lan-authentication.test.ts tests/memory-policy.test.ts tests/native-update-policy.test.ts",
     "start": "electron-vite preview",
     "dist": "npm run dist:win",
     "dist:win": "npm run build && electron-builder --win nsis --x64 --publish never --config.electronDist=node_modules/electron/dist && node scripts/pack-unpacked-zip.cjs && node scripts/check-windows-deliverables.cjs",
@@ -38,7 +38,8 @@
     "build:native": "node scripts/build-native-preview.cjs",
     "package:native": "node scripts/package-native-preview.cjs",
     "check:public": "node scripts/check-publication.cjs",
-    "check:docs": "node scripts/check-docs.cjs"
+    "check:docs": "node scripts/check-docs.cjs",
+    "sign:native-update": "node scripts/sign-native-update.cjs"
   },
   "build": {
     "appId": "app.zerodistance.launcher",
@@ -152,9 +153,9 @@
   },
   "dependencies": {
     "@iarna/toml": "2.2.5",
-    "adm-zip": "^0.6.0",
+    "adm-zip": "0.6.1",
     "koffi": "^3.2.1",
-    "undici": "^6.28.0",
+    "undici": "6.29.1",
     "ws": "8.22.0"
   },
   "devDependencies": {

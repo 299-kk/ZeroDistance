@@ -63,7 +63,7 @@ const sizeText = computed(() => {
   <UpdateDialogShell :label="rollback ? '版本回退确认' : '启动器更新'" @dismiss="state === 'found' ? emit('later') : state === 'done' ? emit('close') : undefined">
     <template #header>
       <div class="upd-head">
-        <div><p class="upd-eyebrow">KAMUCL · {{ rollback ? '版本回退' : '软件更新' }}</p><h3 class="upd-title">{{ state === 'found' ? (rollback ? '回退到' : '发现新版本') : state === 'downloading' ? '正在下载' : '准备安装' }} v{{ release.version }}</h3></div>
+        <div><p class="upd-eyebrow">ZeroDistance · {{ rollback ? '版本回退' : '软件更新' }}</p><h3 class="upd-title">{{ state === 'found' ? (rollback ? '回退到' : '发现新版本') : state === 'downloading' ? '正在下载' : '准备更新' }} v{{ release.version }}</h3></div>
         <button v-if="state !== 'downloading'" class="icon-btn" :aria-label="state === 'found' ? '稍后提醒' : '关闭'" @click="state === 'found' ? emit('later') : emit('close')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
       <div class="upd-meta"><span>当前 v{{ currentVersion }}</span><span v-if="dateText">{{ dateText }}</span><span v-if="sizeText">{{ sizeText }}</span></div>
@@ -77,21 +77,21 @@ const sizeText = computed(() => {
       <div class="upd-download-status"><strong>{{ Math.round((percent ?? 0) * 100) }}%</strong><span class="muted">{{ speedText }}</span></div>
       <div class="upd-progress" role="progressbar" aria-label="更新下载进度" :aria-valuenow="Math.round((percent ?? 0) * 100)" aria-valuemin="0" aria-valuemax="100"><div class="upd-progress-bar" :style="{ width: Math.max(0, Math.min(100, Math.round((percent ?? 0) * 100))) + '%' }"></div></div>
       <p class="upd-meta"><span>{{ bytesText }}</span><span>{{ etaText }}</span></p>
-      <p class="muted upd-note">下载进度同时显示在下载中心，支持断点续传。</p>
+      <p class="muted upd-note">下载进度同时显示在下载中心，可取消；直连失败后尝试备用镜像。</p>
       <p v-if="slowHint" class="upd-slow">下载速度持续偏低，可以通过下方备用方式获取安装包。</p>
     </template>
-    <p v-else class="upd-done-text">安装包已下载并通过 SHA256 完整性校验。下次手动启动时完成安装，替换前会自动备份当前版本。</p>
+    <p v-else class="upd-done-text">更新已验证发布签名和 SHA-256。退出软件后会在后台替换文件并保留备份，下次打开生效，无需重新安装。</p>
     <details v-if="state !== 'done'" class="upd-help" :open="slowHint || undefined">
       <summary>其他下载方式与安装说明</summary>
       <p class="muted">{{ QQ_GROUP_HINT }}</p>
-      <div class="upd-qq-row"><span>内测群 {{ qqGroup }}</span><button class="btn btn-ghost btn-sm" @click="copyGroup">{{ copied ? '已复制' : '复制群号' }}</button></div>
+      <div v-if="qqGroup" class="upd-qq-row"><span>内测群 {{ qqGroup }}</span><button class="btn btn-ghost btn-sm" @click="copyGroup">{{ copied ? '已复制' : '复制群号' }}</button></div>
       <p class="muted">如果旧桌面快捷方式失效，请重新指向更新后的文件。</p>
     </details>
     <template #footer>
       <div class="upd-actions">
         <template v-if="state === 'found'"><button v-if="!rollback" class="upd-skip" @click="emit('skip')">跳过此版本</button><div class="upd-actions-right"><button class="btn btn-ghost" @click="emit('later')">稍后提醒</button><button class="btn btn-gold" @click="emit('updateNow')">{{ rollback ? '确认回退' : '立即更新' }}</button></div></template>
         <div v-else-if="state === 'downloading'" class="upd-actions-right"><button class="btn btn-ghost" @click="emit('cancelDownload')">取消下载</button></div>
-        <div v-else class="upd-actions-right"><button class="btn btn-ghost" @click="emit('close')">稍后</button><button class="btn btn-gold" @click="emit('installNow')">下次启动应用</button></div>
+        <div v-else class="upd-actions-right"><button class="btn btn-ghost" @click="emit('close')">继续使用</button><button class="btn btn-gold" @click="emit('installNow')">知道了</button></div>
       </div>
     </template>
   </UpdateDialogShell>

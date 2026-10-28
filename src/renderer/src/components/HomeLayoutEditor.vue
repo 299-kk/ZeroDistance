@@ -49,7 +49,7 @@ const backgroundPreviewFailed = ref(false)
 const images = computed(() => carouselImages(store.settings?.launchThumbnail))
 const slides = computed(() => carouselKeys(store.settings?.launchThumbnail).map(key => {
   const bundled = builtInLaunchImages.find(image => image.key === key)
-  return { key, src: bundled?.src ?? managedImageUrl(key), title: bundled?.title ?? `自定义图片 ${images.value.indexOf(key) + 1}`, builtin: !!bundled, credit: bundled?.author || bundled?.source || '' }
+  return { key, src: bundled?.thumbnailSrc ?? bundled?.src ?? managedImageUrl(key,256), title: bundled?.title ?? `自定义图片 ${images.value.indexOf(key) + 1}`, builtin: !!bundled, credit: bundled?.author || bundled?.source || '' }
 }))
 const activeSlides = computed(() => new Set(activeCarouselKeys(store.settings?.launchThumbnail)))
 const removeThumbnail = ref<string | null>(null)

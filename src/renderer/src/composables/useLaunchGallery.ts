@@ -8,10 +8,11 @@ import { managedImageUrl } from '../managedAssets'
 import { useMotion } from '../motion'
 
 export function useLaunchGallery() {
-  const { decorativeActive } = useMotion()
+  const { decorativeActive, hidden } = useMotion()
   const paused = ref(false)
   const failed = ref(new Set<string>())
   const ready = new Set<string>()
+  const preloaded = new Map<string, HTMLImageElement>()
   const index = ref(0)
   let player: CarouselPlayback | undefined
   let timer: ReturnType<typeof setInterval> | undefined
@@ -53,9 +54,15 @@ export function useLaunchGallery() {
     failed.value = new Set([...failed.value, key])
   }
   function preload() {
-    for (const slide of slides.value) {
-      if (ready.has(slide.key)) continue
+    // Decode only the visible and next slide, rather than all 20 full-size images.
+    const wanted = new Set(hidden.value ? [] : [slides.value[index.value]?.key, slides.value[(index.value + 1) % slides.value.length]?.key].filter(Boolean))
+    for (const [key, img] of preloaded) if (!wanted.has(key)) {
+      img.onload = img.onerror = null; img.removeAttribute('src'); preloaded.delete(key); ready.delete(key)
+    }
+    for (const slide of slides.value.filter(slide => wanted.has(slide.key))) {
+      if (preloaded.has(slide.key)) continue
       const img = new Image()
+      preloaded.set(slide.key, img)
       img.onload = () => { if (alive) ready.add(slide.key) }
       img.onerror = () => fail(slide.key)
       img.src = slide.src
@@ -79,6 +86,7 @@ export function useLaunchGallery() {
       const now = performance.now(), next = player.peekNext(now)
       if (next !== player.index && !ready.has(slides.value[next]?.key)) return
       index.value = player.tick(now)
+      preload()
     }, 100)
   }
   function select(next: number) {
@@ -91,6 +99,7 @@ export function useLaunchGallery() {
   }
   watch(() => JSON.stringify([slides.value, scopeKey.value, settings.value?.durations, settings.value?.intervalSeconds]), start, { immediate: true })
   watch([decorativeActive, paused], start)
-  onScopeDispose(() => { stop(); alive = false })
+  watch(hidden, preload)
+  onScopeDispose(() => { stop(); alive = false; for (const img of preloaded.values()) { img.onload = img.onerror = null; img.removeAttribute('src') }; preloaded.clear(); ready.clear() })
   return { slides, current, index, paused, select, fail }
 }
