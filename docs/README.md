@@ -11,6 +11,7 @@
 | [签名更新](NATIVE_UPDATES.md) | GitHub、镜像回退、应用恢复及发布密钥 |
 | [更新安全与静默更新](UPDATE_SECURITY_2026-10-27.md) | 攻击边界、依赖修补、助手指纹、密钥权限与退出交接 |
 | [更新网络实测](UPDATE_NETWORK_TEST_2026-10-28.md) | GitHub、镜像、系统代理、断连与续传验证 |
+| [发布后更新测试](UPDATE_PUBLISHED_TEST_2026-10-28.md) | 公开 0.3.2 下载、静默替换和测试边界 |
 | [贡献说明](../CONTRIBUTING.md) | Issue、PR、测试及来源要求 |
 | [安全政策](../SECURITY.md) | 私密漏洞报告和敏感信息处理 |
 | [AI 制作说明](AI_PROVENANCE.md) | 二次开发范围、工具、背景生成与维护责任 |
