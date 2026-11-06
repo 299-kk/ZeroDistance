@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import UpdateDialogShell from '../components/UpdateDialogShell.vue'
 import { updateNotes } from '@shared/updateNotes'
-const ThirdPartyNotices = defineAsyncComponent(() => import('../components/ThirdPartyNotices.vue'))
 import {
   addCustomJava,
   applyLocalUpdate,
@@ -99,7 +98,6 @@ async function save(patch: Partial<Settings>) {
 // ---------------- 关于与更新 ----------------
 const appVersion = __APP_VERSION__
 const isPreviewTesting = updateNotes.find(note => note.version === appVersion)?.phase === 'preview'
-const showLicenses = ref(false)
 async function enterLowMemory(){try{await window.kamucl.invoke('window:lowMemory')}catch(error){toast(errText(error),'error')}}
 const updateCheckState = ref<'idle' | 'checking' | 'latest' | 'failed'>('idle')
 let lastManualCheck = 0
@@ -1080,15 +1078,12 @@ async function onRemovePlugin(p: PluginInfo) {
             <span class="upd-label">当前版本</span>
             <span data-ui="SettingsView:7f2b62d69ce5" class="upd-value">v{{ appVersion }}</span><span v-if="isPreviewTesting" class="tag release-phase">预览测试</span>
             <button class="btn btn-ghost btn-sm" @click="onShowDisclaimer">使用声明</button>
-            <button data-ui="SettingsView:e3f1fccf0c78" class="btn btn-ghost btn-sm" @click="showLicenses = true">第三方许可</button>
-            <ThirdPartyNotices v-if="showLicenses" @dismiss="showLicenses = false" />
             <button data-ui="SettingsView:2d10e8cc0926" class="btn btn-ghost btn-sm" :disabled="!GITHUB_REPO || updateCheckState === 'checking'" @click="onCheckUpdate">
               <span data-ui="SettingsView:bb9654fb7775" v-if="updateCheckState === 'checking'" class="spin"></span>
               {{ updateCheckState === 'checking' ? '检查中' : GITHUB_REPO ? '检查更新' : '更新源未配置' }}
             </button>
             <span data-ui="SettingsView:cd41281572d3" v-if="updateCheckState === 'latest'" class="upd-latest">已是最新 ✓</span>
           </div>
-          <p class="muted group-hint ai-origin-note">ZeroDistance 的二次开发、迁移、文档及默认背景由 AI 制作；用户提供需求与测试反馈。保留 KAMUCL 上游代码、作者及第三方许可。</p>
           <!-- 检查失败：明确是连不上 GitHub 更新源，并提供重试入口（不再误报「无更新」） -->
           <div data-ui="SettingsView:203842d2f6d4" v-if="updateCheckState === 'failed'" class="upd-row upd-failed-row">
             <span data-ui="SettingsView:5ae61f0d3e62" class="upd-failed-text">你的网络可能无法连接 GitHub，检查更新失败</span>

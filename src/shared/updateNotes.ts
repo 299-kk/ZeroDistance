@@ -1,7 +1,7 @@
 /** ZeroDistance built-in release notes. Upstream history is preserved in docs/upstream. */
 export interface UpdateNote { version: string; date: string; title?: string; summary?: string; phase?: 'preview' | 'validation'; testingNotes?: string[]; changes: string[] }
 export const updateNotes: UpdateNote[] = [{
- version: '0.3.5', date: '2026-11-06', phase: 'preview', title: '默认配置同步',
+ version: '0.3.6', date: '2026-11-06', phase: 'preview', title: '默认配置同步',
  summary: '集中管理游戏选项、按键和默认材质包的同步。',
  changes: ['默认配置新增一键同步开关，可同时控制游戏选项、按键和默认材质包，并显示各项状态。', '修改游戏选项或按键时自动开启对应同步，保留单独关闭的选择。', '游戏启动时应用已启用的配置；按键同步支持 Minecraft 1.13 及以上。'],
  testingNotes: ['本版为公开预览测试版，实际游戏与更新后的数据保留仍需玩家验证。']
@@ -22,8 +22,8 @@ export const updateNotes: UpdateNote[] = [{
  testingNotes: ['本版为公开预览测试版。', '设置 → 行为与登录新增低占用模式，可手动进入或开启游戏启动后自动进入（默认关闭），双击托盘图标恢复。', '低占用释放 WebView2，保留已有联机核心；下载和未保存编辑会暂缓切换。', '低占用本机测试约 30 MiB 私有提交，持续 TCP 核心约 72 MiB；后者总工作集仍超过 100 MB，正常完整界面未达到 100 MB。', '自动切换使用 QA 事件与回环 TCP 验证，真实游戏及公网联机仍需继续验证。', '0.3.1 及更早版本先手动安装一次；签名更新在正常退出后静默应用，下次打开生效。']
 }, {
   version: '0.3.1', date: '2026-10-22', phase: 'preview', title: '方块世界背景',
-  summary: '内置四张 AI 生成背景，安装程序和 ZIP 可从 GitHub Releases 下载。',
-  changes: ['新增樱花山谷、雪山湖畔、月下营地、海岸落日四张默认背景，随源码和安装包分发。', '替换原默认照片，更新使用声明及素材说明，补充 AI 制作范围和上游来源说明。', '软件关于页面增加 AI 制作说明，保留原有界面、功能及数据兼容。'],
+  summary: '内置四张方块世界背景，安装程序和 ZIP 可从 GitHub Releases 下载。',
+  changes: ['新增樱花山谷、雪山湖畔、月下营地、海岸落日四张默认背景，随源码和安装包分发。', '替换原默认照片，更新使用声明及素材说明。'],
   testingNotes: ['原生自动更新尚未接入，请下载新版安装程序或完整 ZIP 更新。', '使用声明已更新，升级后需重新阅读三秒并同意。']
 }, {
   version: '0.3.0', date: '2026-10-22', phase: 'preview', title: 'ZeroDistance 0.3.0',
