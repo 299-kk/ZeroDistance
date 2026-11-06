@@ -23,7 +23,13 @@ export function setDefaultGameOptions(change: { enabled?: boolean; id?: string; 
   }
   if (change.id) {
     if (change.value === null) delete state.values[change.id]
-    else { validateGameOption(change.id, change.value); state.values[change.id] = change.value }
+    else {
+      validateGameOption(change.id, change.value)
+      state.values[change.id] = change.value
+      // An explicit option edit expresses intent to apply it on launch.
+      // The user can still pause synchronization after saving.
+      if (change.enabled === undefined) state.enabled = true
+    }
   }
   fs.mkdirSync(path.dirname(file()), { recursive: true })
   const tmp = file() + '.tmp'

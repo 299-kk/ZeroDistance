@@ -1,6 +1,11 @@
 /** ZeroDistance built-in release notes. Upstream history is preserved in docs/upstream. */
 export interface UpdateNote { version: string; date: string; title?: string; summary?: string; phase?: 'preview' | 'validation'; testingNotes?: string[]; changes: string[] }
 export const updateNotes: UpdateNote[] = [{
+ version: '0.3.5', date: '2026-11-06', phase: 'preview', title: '默认配置同步',
+ summary: '集中管理游戏选项、按键和默认材质包的同步。',
+ changes: ['默认配置新增一键同步开关，可同时控制游戏选项、按键和默认材质包，并显示各项状态。', '修改游戏选项或按键时自动开启对应同步，保留单独关闭的选择。', '游戏启动时应用已启用的配置；按键同步支持 Minecraft 1.13 及以上。'],
+ testingNotes: ['本版为公开预览测试版，实际游戏与更新后的数据保留仍需玩家验证。']
+}, {
  version: '0.3.4', date: '2026-10-28', phase: 'preview', title: '更新下载稳定性',
  summary: '改善 GitHub 连接不稳定时的更新下载和镜像切换。',
  changes: ['自动模式在连接超时、传输停滞或持续低速时尝试备用镜像，并显示切换状态。', '提供多个内置镜像，支持自定义地址和仅 GitHub 模式；来源之间可继续下载，完整包仍验证发布签名和 SHA-256。', '网络请求无响应时支持及时切源或取消，所有备用来源失效时可重试较慢的来源。'],

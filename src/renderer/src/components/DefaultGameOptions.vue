@@ -3,7 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { GAME_OPTIONS, GAME_OPTION_PAGES, VIDEO_OPTION_ORDER, uniqueGameOptions, supportedGameOption, type DefaultGameOptions, type GameOptionDef, type GameOptionValue } from '@shared/gameOptions'
 import { getDefaultGameOptions, setDefaultGameOptions, errText } from '../api'
 import { store, toast } from '../store'
-const emit = defineEmits<{ section: [value: 'keys' | 'packs'] }>()
+const props = defineProps<{ syncBusy?: boolean }>()
+const emit = defineEmits<{ section: [value: 'keys' | 'packs']; syncState: [enabled: boolean]; busyState: [busy: boolean] }>()
 const state = ref<DefaultGameOptions>({ enabled: false, values: {} })
 const draft = ref<Record<string, GameOptionValue>>({})
 const busy = ref(false), loading = ref(true), page = ref('root'), version = ref('26.2')
@@ -17,12 +18,18 @@ const unavailable = computed(() => uniqueGameOptions.filter(d => d.id in state.v
 const value = (d: GameOptionDef) => draft.value[d.id] ?? state.value.values[d.id] ?? d.initial
 const label = (d: GameOptionDef) => d.choices?.find(c => c[0] === value(d))?.[1] ?? (typeof value(d) === 'boolean' ? (value(d) ? '开启' : '关闭') : String(value(d)) + (d.unit ?? ''))
 async function save(change: Parameters<typeof setDefaultGameOptions>[0]) {
-  if (busy.value) return
+  if (busy.value || props.syncBusy) return
   busy.value = true
-  try { state.value = await setDefaultGameOptions(change); draft.value = {} }
+  emit('busyState', true)
+  try { state.value = await setDefaultGameOptions(change); emit('syncState', state.value.enabled); draft.value = {} }
   catch (e) { draft.value = {}; toast('保存游戏选项失败：' + errText(e), 'error') }
-  finally { busy.value = false }
+  finally { busy.value = false; emit('busyState', false) }
 }
+async function setSync(enabled: boolean) {
+  state.value = await setDefaultGameOptions({ enabled })
+  emit('syncState', state.value.enabled)
+}
+defineExpose({ setSync })
 function cycle(d: GameOptionDef) {
   const choices = d.choices?.map(c => c[0]) ?? [false, true]
   void save({ id: d.id, value: choices[(choices.indexOf(value(d)) + 1) % choices.length] })
@@ -34,7 +41,7 @@ function numericChange(d: GameOptionDef, event: Event) {
 }
 function open(id: string) { if (id === 'packs') emit('section', 'packs'); else page.value = id }
 onMounted(async () => {
-  try { state.value = await getDefaultGameOptions() } catch (e) { toast(errText(e), 'error') }
+  try { state.value = await getDefaultGameOptions(); emit('syncState', state.value.enabled) } catch (e) { toast(errText(e), 'error') }
   finally { loading.value = false }
 })
 </script>
@@ -43,13 +50,13 @@ onMounted(async () => {
   <section data-ui="DefaultGameOptions:28b5a6c34e3b" class="card game-options" :data-design-page="'game-options-'+page">
     <header data-ui="DefaultGameOptions:6b4ccdfa01fc" class="options-header">
       <div data-ui="DefaultGameOptions:f45beec037f5"><h2 data-ui="DefaultGameOptions:8bae28f66b28">游戏选项</h2><p class="muted">按游戏内「Esc → 选项」的入口顺序设置，下次启动时应用。</p></div>
-      <label data-ui="DefaultGameOptions:e3d3749c5eee" class="options-sync"><span>启动时同步</span><span data-ui="DefaultGameOptions:80969e0561bb" class="switch"><input data-ui="DefaultGameOptions:c814db8dde4e" type="checkbox" :checked="state.enabled" :disabled="busy || loading" @change="save({enabled: ($event.target as HTMLInputElement).checked})"><span data-ui="DefaultGameOptions:63f93b27a5fb" class="switch-ui"></span></span></label>
+      <label data-ui="DefaultGameOptions:e3d3749c5eee" class="options-sync"><span>启动时同步</span><span data-ui="DefaultGameOptions:80969e0561bb" class="switch"><input data-ui="DefaultGameOptions:c814db8dde4e" type="checkbox" :checked="state.enabled" :disabled="busy || loading || syncBusy" @change="save({enabled: ($event.target as HTMLInputElement).checked})"><span data-ui="DefaultGameOptions:63f93b27a5fb" class="switch-ui"></span></span></label>
     </header>
     <div data-ui="DefaultGameOptions:66d723e1d987" class="options-context">
       <span data-ui="DefaultGameOptions:9de7c18725e7" class="tag">{{ Object.keys(state.values).length }} 项自定义</span>
       <label data-ui="DefaultGameOptions:0e5b899edc75">兼容性预览 <select data-ui="DefaultGameOptions:9b4bafc1fc30" v-model="version" class="input"><option v-for="v in versions" :key="v" :value="v">Minecraft {{ v }}</option></select></label>
     </div>
-    <p class="options-note muted">只同步你修改的项目，其余保留游戏设置。预览版本用于检查兼容性，启动时会按实际版本转换数值。</p>
+    <p class="options-note muted">修改或应用选项会自动开启同步；也可手动关闭。只同步你修改的项目，其余保留游戏设置。预览版本用于检查兼容性，启动时会按实际版本转换数值。</p>
     <p data-ui="DefaultGameOptions:10d78a0fdb4e" v-if="unavailable.length" class="options-warning">{{ version }} 不支持：{{ unavailable.map(d => d.label).join('、') }}。这些项目仅对支持它们的版本生效。</p>
     <div data-ui="DefaultGameOptions:0d8159fbfd41" class="options-path"><button data-ui="DefaultGameOptions:1562533f2d42" v-if="page !== 'root'" class="btn btn-ghost btn-sm" @click="page = page === 'mouse' ? 'controls' : 'root'">← 返回</button><span>选项{{ page === 'mouse' ? ' / 控制' : '' }}{{ page !== 'root' ? ' / ' + title : '' }}</span></div>
     <Transition name="subpage" :duration="200"><div :key="page" class="options-subpage">

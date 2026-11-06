@@ -20,6 +20,23 @@ const capturing = ref('')
 const resourcePacks = ref<DefaultResourcePack[]>([])
 const packsBusy = ref(false)
 const dragActive = ref(false)
+const gameOptionsRef = ref<InstanceType<typeof DefaultGameOptions> | null>(null)
+const gameSync = ref<boolean | null>(null)
+const gameOptionsBusy = ref(false)
+const syncAllBusy = ref(false)
+const syncCount = computed(() => Number(gameSync.value === true) + Number(store.settings?.keySync === true) + Number(store.settings?.resourcePackSync === true))
+const allSync = computed(() => syncCount.value === 3)
+async function toggleAllSync(on: boolean) {
+  if (syncAllBusy.value || gameOptionsBusy.value || !gameOptionsRef.value || gameSync.value === null) return
+  syncAllBusy.value = true
+  try {
+    await gameOptionsRef.value.setSync(on)
+    await updateSettings({ keySync: on, resourcePackSync: on })
+    toast(on ? '已开启全部默认配置同步，下次启动游戏时生效' : '已关闭全部默认配置同步', 'success')
+  } catch (e) {
+    toast('部分同步设置可能已更改，请检查各项开关：' + errText(e), 'error')
+  } finally { syncAllBusy.value = false }
+}
 async function togglePackSync(on: boolean) {
   try { await updateSettings({ resourcePackSync: on }) } catch (e) { toast('保存失败：' + errText(e), 'error') }
 }
@@ -100,7 +117,8 @@ async function onCaptureMouse(e: MouseEvent) {
 async function applyKey(id: string, bind: string) {
   try {
     keys.value = await setDefaultKey(id, bind)
-    toast('已更新默认按键', 'success')
+    if (!keySync.value) await updateSettings({ keySync: true })
+    toast('已更新默认按键并开启同步，下次启动游戏时生效', 'success')
   } catch (e) {
     toast('设置失败：' + errText(e), 'error')
   }
@@ -121,7 +139,8 @@ async function clearCapturedKey() {
 async function resetAllKeys() {
   try {
     keys.value = await resetDefaultKeys()
-    toast('按键已全部恢复为 MC 原版默认', 'success')
+    if (!keySync.value) await updateSettings({ keySync: true })
+    toast('按键已恢复为 MC 原版默认，并开启同步', 'success')
   } catch (e) {
     toast('重置失败：' + errText(e), 'error')
   }
@@ -147,17 +166,25 @@ onUnmounted(stopCapture)
       <p data-ui="KeysView:f1949eee5dfe" class="page-sub">让每个世界，都保留你熟悉的操作习惯。</p>
     </div>
 
+    <div class="sync-all-bar">
+      <div class="sync-all-description"><strong>一键同步</strong>
+        <span class="sync-help"><button type="button" class="sync-help-icon" aria-label="一键同步说明" aria-describedby="sync-all-help">?</button><span id="sync-all-help" role="tooltip" class="sync-help-tip">启动游戏时同步：已自定义的游戏选项、默认按键和已启用的默认材质包。各项可单独关闭；按键同步支持 Minecraft 1.13 及以上。</span></span>
+        <small>{{ syncCount === 3 ? '全部开启' : syncCount === 0 ? '全部关闭' : '部分开启' }}</small>
+      </div>
+      <label class="switch"><input type="checkbox" aria-label="一键同步默认配置" :checked="allSync" :disabled="syncAllBusy || gameOptionsBusy || gameSync === null || !store.settings" @change="toggleAllSync(($event.target as HTMLInputElement).checked)"><span class="switch-ui"></span></label>
+    </div>
+
     <nav data-ui="KeysView:c0a728e450f2" class="cfg-sections" aria-label="默认配置分类">
       <button data-ui="KeysView:384d69817c73" :class="{active:section === 'game'}" @click="selectSection('game')"><strong>游戏选项</strong><small>画面、控制与辅助功能</small></button>
       <button data-ui="KeysView:732b450bc0f6" :class="{active:section === 'keys'}" @click="selectSection('keys')"><strong>按键配置</strong><small>{{ keyModifiedCount }} 项自定义绑定</small></button>
       <button data-ui="KeysView:d7d636f03de6" :class="{active:section === 'packs'}" @click="selectSection('packs')"><strong>默认材质包</strong><small>{{ resourcePacks.length }} 个材质包</small></button>
     </nav>
-    <DefaultGameOptions v-show="section === 'game'" @section="selectSection" />
+    <DefaultGameOptions ref="gameOptionsRef" v-show="section === 'game'" :sync-busy="syncAllBusy" @sync-state="gameSync = $event" @busy-state="gameOptionsBusy = $event" @section="selectSection" />
     <div data-ui="KeysView:69a14d0edda5" v-show="section === 'packs'" class="card cfg-col default-packs" :class="{ 'drag-active': dragActive }" @dragover.prevent="dragActive = true" @dragleave.self="dragActive = false" @drop.prevent="dropPacks">
       <div class="cfg-col-head">
         <div><h3 class="group-title">默认材质包</h3><p class="muted group-hint">拖入多个 ZIP 材质包，列表靠后的包优先级更高</p></div>
         <button data-ui="KeysView:876c0145d0d4" class="btn btn-ghost" :disabled="packsBusy" @click="editPacks(pickDefaultResourcePacks, true)">{{ packsBusy ? '正在导入…' : '添加材质包…' }}</button>
-        <label data-ui="KeysView:f73970a957ff" class="cfg-sync"><span>材质包同步</span><span class="switch"><input data-ui="KeysView:78b789615abb" type="checkbox" :checked="store.settings?.resourcePackSync === true" @change="togglePackSync(($event.target as HTMLInputElement).checked)"/><span class="switch-ui"></span></span></label>
+        <label data-ui="KeysView:f73970a957ff" class="cfg-sync"><span>材质包同步</span><span class="switch"><input data-ui="KeysView:78b789615abb" type="checkbox" :disabled="syncAllBusy" :checked="store.settings?.resourcePackSync === true" @change="togglePackSync(($event.target as HTMLInputElement).checked)"/><span class="switch-ui"></span></span></label>
       </div>
       <div data-ui="KeysView:22e226a30b38" v-for="(pack, index) in resourcePacks" :key="pack.id" class="cfg-row">
         <span data-ui="KeysView:deb0c6a821a6" class="cfg-label" :title="pack.name">{{ pack.name }}</span>
@@ -182,7 +209,7 @@ onUnmounted(stopCapture)
           <label data-ui="KeysView:d24483e908e0" class="cfg-sync" title="启动任意版本时，用下方默认按键覆盖该实例 options.txt 的 key_* 项">
             <span data-ui="KeysView:3c5373f12848" class="cfg-sync-text">按键设置同步</span>
             <span class="switch">
-              <input data-ui="KeysView:8da5b395e36b" type="checkbox" :checked="keySync" @change="toggleKeySync(($event.target as HTMLInputElement).checked)" />
+              <input data-ui="KeysView:8da5b395e36b" type="checkbox" :disabled="syncAllBusy" :checked="keySync" @change="toggleKeySync(($event.target as HTMLInputElement).checked)" />
               <span class="switch-ui"></span>
             </span>
           </label>
@@ -226,6 +253,8 @@ onUnmounted(stopCapture)
 /* 间距全部走全局设计令牌：元素与板块边缘保持呼吸感（card-pad 由 .card 提供） */
 .cfg-page { width: 100%; max-width: 1040px; margin: 0 auto; }
 .cfg-page > .page-head { margin-bottom: 24px; }
+.sync-all-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;padding:14px 18px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card)}
+.sync-all-description{display:flex;align-items:center;gap:10px}.sync-all-description small{color:var(--text-dim)}.sync-help{position:relative;display:inline-flex}.sync-help-icon{display:grid;place-items:center;width:19px;height:19px;border:1px solid var(--border);border-radius:50%;background:transparent;color:var(--text-dim);font-size:12px;cursor:help}.sync-help-tip{visibility:hidden;opacity:0;position:absolute;z-index:20;top:calc(100% + 8px);left:-10px;width:260px;max-width:70vw;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:12px;line-height:1.6;box-shadow:0 8px 24px #0004;transition:opacity .15s}.sync-help:hover .sync-help-tip,.sync-help:focus-within .sync-help-tip{visibility:visible;opacity:1}
 .cfg-sections{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:24px}.cfg-sections button{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--card);color:var(--text);cursor:pointer;transition:background 180ms,border-color 180ms}.cfg-sections small{font-size:12px;color:var(--text-dim)}.cfg-sections button.active{border-color:var(--accent);background:var(--accent-soft)}.cfg-sections button:hover{border-color:var(--accent)}
 @media(max-width:700px){.cfg-sections{gap:8px}.cfg-sections button{padding:12px}.cfg-sections small{display:none}}
 .default-packs { margin-bottom: var(--sec-gap); }

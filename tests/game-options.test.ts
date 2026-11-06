@@ -15,8 +15,7 @@ test('默认游戏选项按实例写入，版本转换后的游戏读值与界�
   new Function('require', 'module', 'exports', built.outputFiles[0].text)((name: string) => name === 'electron' ? { app: { getPath: () => root } } : require(name), mod, mod.exports)
   const api = mod.exports
   for (const [id, value] of Object.entries({ fov: 90, gamma: 73, autoJump: false, toggleCrouch: true, toggleSprint: true, mouseSensitivity: 125, chatOpacity: 55 })) api.setDefaultGameOptions({ id, value })
-  assert.equal(api.getDefaultGameOptions().enabled, false)
-  api.setDefaultGameOptions({ enabled: true })
+  assert.equal(api.getDefaultGameOptions().enabled, true)
   for (const version of ['1.8.9', '1.12.2', '1.16.5', '1.20.1', '1.21.11', '26.2']) {
     const dir = path.join(root, 'folder-' + version, 'versions', 'my-instance')
     fs.mkdirSync(dir, { recursive: true })
@@ -47,6 +46,11 @@ test('默认游戏选项按实例写入，版本转换后的游戏读值与界�
   api.setDefaultGameOptions({ id: 'fov', value: null }); assert.equal(api.getDefaultGameOptions().values.fov, undefined)
   api.setDefaultGameOptions({ enabled: false })
   const absent = path.join(root, 'must-stay-absent'); api.syncDefaultGameOptions(absent, '26.2'); assert.equal(fs.existsSync(absent), false)
+  api.setDefaultGameOptions({ id: 'gamma', value: 50 })
+  assert.equal(api.getDefaultGameOptions().enabled, true)
+  api.setDefaultGameOptions({ enabled: false })
+  api.setDefaultGameOptions({ id: 'gamma', value: null })
+  assert.equal(api.getDefaultGameOptions().enabled, false)
 })
 
 test('视场角每一度均能经存储值回读，旧语言格式正确', () => {
