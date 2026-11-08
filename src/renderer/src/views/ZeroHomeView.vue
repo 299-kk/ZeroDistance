@@ -18,18 +18,19 @@ const { slides, current: photo, index: photoIndex, paused: galleryPaused, select
 const launchPending = ref(false)
 const launching = computed(() => launchPending.value || store.launchState?.status === 'launching')
 const launchPercent = computed(() => store.progress ? Math.round(progressMono(store.progress) * 100) : 0)
-const recent = computed(() => [...store.allInstalled].sort((a, b) => (store.lastPlayed[b.id] || 0) - (store.lastPlayed[a.id] || 0)).slice(0, 3))
+const playable = computed(() => store.allInstalled.filter(v => !v.incomplete && !v.failed))
+const recent = computed(() => [...playable.value].sort((a, b) => (store.lastPlayed[b.id] || 0) - (store.lastPlayed[a.id] || 0)).slice(0, 3))
 const accountType = computed(() => store.selectedAccount?.type === 'microsoft' ? '微软正版' : store.selectedAccount?.type === 'offline' ? '离线模式' : store.selectedAccount ? '外置认证' : '尚未选择账号')
 const running = computed(() => Object.values(store.launchStates).filter(s => s.status === 'running'))
 const runningCount = computed(() => new Set(running.value.map(s => `${s.folder}/${s.versionId}`)).size)
 const currentRunning = computed(() => running.value.some(s => s.versionId === current.value?.id && s.folder === current.value?.folder))
-const launchLabel = computed(() => launching.value ? `正在启动 ${launchPercent.value}%` : current.value ? currentRunning.value ? '新开一个窗口' : '启动游戏' : store.allInstalled.length ? '选择游戏' : '安装游戏')
+const launchLabel = computed(() => launching.value ? `正在启动 ${launchPercent.value}%` : current.value ? currentRunning.value ? '新开一个窗口' : '启动游戏' : playable.value.length ? '选择游戏' : '安装游戏')
 function install() { store.gamePageTab = 'download'; store.currentView = 'game' }
 function discover(kind: CommunityKind = 'mod') { store.communityKind = kind; store.currentView = 'community' }
 function connect(method: typeof store.connectMethod = 'choose') { store.connectMethod = method; store.currentView = 'friends' }
 async function launch(version: InstalledVersion | undefined = current.value) {
   if (launching.value) return
-  if (!version) { if (store.allInstalled.length) { store.gamePageTab = 'installed'; store.currentView = 'game' } else install(); return }
+  if (!version) { if (playable.value.length) { store.gamePageTab = 'installed'; store.currentView = 'game' } else install(); return }
   if (!store.selectedAccount) { store.currentView = 'accounts'; toast('添加或选择一个账号，即可开始游戏', 'info'); return }
   launchPending.value = true
   try {
@@ -81,7 +82,7 @@ const shortcuts = [
     <div class="zd-session-strip" role="status" :class="{ active: runningCount }"><span class="zd-session-dot"></span><strong>{{ runningCount ? `目前已启动 ${runningCount} 个游戏版本` : launching ? "正在准备游戏" : "当前没有运行中的游戏" }}</strong><span>{{ runningCount ? `${running.length} 个游戏进程 · 退出后会自动更新` : "启动结果会显示在这里" }}</span><button v-if="runningCount" @click="store.currentView = 'game'">查看游戏 →</button></div>
     <div class="zd-dashboard">
       <section class="zd-library">
-        <div class="zd-section-head"><h2>我的游戏 <span>{{ store.allInstalled.length.toString().padStart(2, '0') }}</span></h2><button class="zd-text-link" @click="store.gamePageTab = 'installed'; store.currentView = 'game'">管理游戏 <ZeroIcon name="right" :size="14" /></button></div>
+        <div class="zd-section-head"><h2>我的游戏 <span>{{ playable.length.toString().padStart(2, '0') }}</span></h2><button class="zd-text-link" @click="store.gamePageTab = 'installed'; store.currentView = 'game'">管理游戏 <ZeroIcon name="right" :size="14" /></button></div>
         <div v-if="!recent.length" class="zd-empty-library"><span class="zd-empty-icon"><ZeroIcon name="cube" :size="28" /></span><div><h3>还没有游戏</h3><p>安装 Minecraft，或导入本地整合包。</p></div><div class="zd-empty-actions"><button class="zd-outline-button" @click="install"><ZeroIcon name="plus" :size="15" />安装游戏</button><button class="zd-text-link" @click="importPack">导入整合包</button></div></div>
         <div v-else class="zd-instance-list"><div v-for="version in recent" :key="version.folder + version.id" class="zd-instance" :class="{ selected: current?.id === version.id && current?.folder === version.folder }"><button class="zd-instance-select" @click="selectInstance(version.id, version.folder)"><InstanceIcon :version="version" :size="33" /><span><strong>{{ displayVersionName(version) }}</strong><small>{{ version.mcVersion }} · {{ version.loader || 'Vanilla' }}<span>· {{ fmtLastPlayed(store.lastPlayed[version.id]) }}</span></small><VersionSize :version="version" /></span></button><button class="zd-instance-play" :disabled="launching" :aria-label="`启动 ${displayVersionName(version)}`" @click="launch(version)"><ZeroIcon name="play" :size="16" /></button><button class="zd-instance-more" :aria-label="`管理 ${displayVersionName(version)}`" @click="openInstanceCenter(version)">···</button></div></div>
         <div class="zd-library-footer"><span><ZeroIcon name="shield" :size="13" />实例占用不重复计入共享库与资源</span><button title="打开游戏目录" aria-label="打开游戏目录" @click="openFolder"><ZeroIcon name="folder" :size="16" /></button></div>

@@ -81,7 +81,8 @@ export const store = reactive({
   gamePageTab: 'installed' as 'installed' | 'download',
   communityKind: 'mod' as import('@shared/types').CommunityKind,
   communityIntent: null as null | { projectId: string; title: string; mcVersion: string; loader: '' | import('@shared/types').LoaderName },
-  modInstallRequest: null as null | { target: InstalledVersion; input: { paths?: string[]; file?: import('@shared/types').CommunityFile } },
+  modInstallRequest: null as null | { target: InstalledVersion; input: { paths?: string[]; file?: import('@shared/types').CommunityFile; files?: import('@shared/types').CommunityFile[] }; fromList?: boolean },
+  modInstallList: null as null | { target: InstalledVersion; entries: Array<{ title: string; file: import('@shared/types').CommunityFile }> },
   connectMethod: 'choose' as 'choose' | 'frp' | 'voxlink' | 'terracotta',
   settingsSection: '' as '' | 'java' | 'memory' | 'downloads',
   /** 顶栏搜索关键字（游戏版本页版本列表联动过滤） */
@@ -132,7 +133,7 @@ export const store = reactive({
 })
 
 const normalizeFolder = (value = '') => value.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase()
-export const activeInstalled = computed(() => store.installed.filter(v => !v.folder || normalizeFolder(v.folder) === normalizeFolder(store.settings?.activeFolder || store.settings?.gameDir)))
+export const activeInstalled = computed(() => store.installed.filter(v => !v.incomplete && !v.failed && (!v.folder || normalizeFolder(v.folder) === normalizeFolder(store.settings?.activeFolder || store.settings?.gameDir))))
 export const selectedInstance = computed(() => activeInstalled.value.find(v => v.id === store.resourceVersionId) ?? activeInstalled.value[0])
 watch(() => store.settings?.activeFolder, () => {
   store.installed = store.allInstalled.filter(v => normalizeFolder(v.folder) === normalizeFolder(store.settings?.activeFolder || store.settings?.gameDir))

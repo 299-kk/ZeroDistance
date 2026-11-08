@@ -405,9 +405,9 @@ export function scanJava(refresh = false): JavaInfo[] {
 
 /** Same discovery/selection as scanJava, without serial child processes blocking
  * the renderer or the other launch preparation branches. */
-export async function scanJavaForLaunch(): Promise<JavaInfo[]> {
-  if (scanCache && Date.now() - scanCache.time < SCAN_TTL) return mergeCustom(scanCache.list)
-  const persisted = cachedCompleteList(PERSISTENT_SCAN_TTL)
+export async function scanJavaForLaunch(refresh = false): Promise<JavaInfo[]> {
+  if (!refresh && scanCache && Date.now() - scanCache.time < SCAN_TTL) return mergeCustom(scanCache.list)
+  const persisted = refresh ? null : cachedCompleteList(PERSISTENT_SCAN_TTL)
   if (persisted) return mergeCustom(persisted)
   const candidates = quickCandidates(false)
   try {
@@ -884,23 +884,21 @@ export function selectJavaByMajor<T extends { major: number; is64Bit: boolean; a
 }
 
 /**
- * 确保有可用 Java：最低版本 + 向上兼容——游戏要求 Java N 时，所有 ≥N 的已安装
- * Java 均可用；优先推荐版本（==need），否则取满足条件的最高版本（如仅装 Java 21
- * 无 Java 17 时，1.20.1 直接用 Java 21 启动，与 PCL2/HMCL 一致）。
+ * 确保有所需主版本的 Java；避免让自动选择的较新 Java 破坏旧模组兼容性。
  * 完整扫描本机后仍无满足条件的 Java 时，才从 Adoptium 下载 JRE 到 gameDir/runtimes/jre-<major>/。
  * Windows 为 zip（adm-zip 解压）；macOS/Linux 为 tar.gz（系统 tar 解压）。
  * 返回 java 可执行文件绝对路径。
  */
 const javaPreparations = new SharedPreparation<string>()
-export function ensureJava(versionJson: VersionJson, emit: ProgressEmit): Promise<string> {
+export function ensureJava(versionJson: VersionJson, emit: ProgressEmit, requestedMajor = requiredMajor(versionJson)): Promise<string> {
   // NeoForge repair and game launch may need the same JRE concurrently. Never
   // let two downloads/extractions replace the same runtime under one another.
-  const key = `${pathKey(path.resolve(runtimesDir()))}:${requiredMajor(versionJson)}:${macJavaArchitecture(versionJson) ?? process.arch}`
-  return javaPreparations.run(key, () => ensureJavaInternal(versionJson, emit))
+  const key = `${pathKey(path.resolve(runtimesDir()))}:${requestedMajor}:${macJavaArchitecture(versionJson) ?? process.arch}`
+  return javaPreparations.run(key, () => ensureJavaInternal(versionJson, emit, requestedMajor))
 }
 
-export async function selectHealthyJava(available: JavaInfo[], need: number, architecture?: string): Promise<JavaInfo | null> {
-  let remaining = [...available]
+export async function selectHealthyJava(available: JavaInfo[], need: number, architecture?: string, exact = false): Promise<JavaInfo | null> {
+  let remaining = exact ? available.filter(j => j.major === need) : [...available]
   while (remaining.length) {
     const candidate = selectJavaByMajor(remaining, need, architecture)
     if (!candidate) return null
@@ -914,17 +912,19 @@ export async function selectHealthyJava(available: JavaInfo[], need: number, arc
   return null
 }
 
-async function ensureJavaInternal(versionJson: VersionJson, emit: ProgressEmit): Promise<string> {
-  const need = requiredMajor(versionJson)
+async function ensureJavaInternal(versionJson: VersionJson, emit: ProgressEmit, need: number): Promise<string> {
   const started = Date.now()
   const architecture = macJavaArchitecture(versionJson)
-  const local = await selectHealthyJava(await scanJavaForLaunch(), need, architecture)
+  let local = await selectHealthyJava(await scanJavaForLaunch(), need, architecture, true)
+  // A previous complete scan can remain cached for days; check managed
+  // runtimes once more before downloading a missing Java.
+  if (!local) local = await selectHealthyJava(await scanJavaForLaunch(true), need, architecture, true)
   if (local) {
     if (local.major === need) javaLog.debug(`本机已有 Java ${need}（64位）：${local.path}`)
     else javaLog.info(`本机没有 Java ${need}，向上兼容选用 Java ${local.major}（${local.version}，64位）：${local.path}`)
     return local.path
   }
-  javaLog.info(`本机没有 Java ${need} 或更高版本（64位），开始从 Adoptium 自动下载`)
+  javaLog.info(`游戏需要 Java ${need}，本机未找到，开始自动准备`)
   try {
     const exe = await downloadAndExtractJava(need, emit, architecture)
     javaLog.info(`Java ${need} 自动下载完成：${exe}（耗时 ${((Date.now() - started) / 1000).toFixed(1)}s）`)

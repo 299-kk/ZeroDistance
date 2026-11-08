@@ -1,4 +1,4 @@
-const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto'), { execFileSync } = require('node:child_process'), Zip = require('adm-zip')
+const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto'), { execFileSync, spawnSync } = require('node:child_process'), Zip = require('adm-zip')
 const root = path.resolve(__dirname, '..'), tools = path.join(root, '.qa/tools'), classes = path.join(root, '.qa/lan-agent/classes')
 const compiler = path.join(tools, 'ecj-3.43.0.jar'), checksum = 'c786468c65e906498e7e36ece4e0d04c6d3dd34c9a61b34a3a5b512801911a82'
 async function build() {
@@ -14,7 +14,14 @@ async function build() {
   const candidates = [process.env.ZERO_DISTANCE_BUILD_JAVA, process.env.JAVA_HOME && path.join(process.env.JAVA_HOME, 'bin', javaName)].filter(Boolean)
   const runtimes = 'D:/ZeroDistance/.minecraft/runtimes'
   if (fs.existsSync(runtimes)) for (const entry of fs.readdirSync(runtimes)) candidates.push(path.join(runtimes, entry, 'bin/java.exe'))
-  const java = candidates.find(file => fs.existsSync(file)) || 'java'
+  candidates.push(javaName)
+  const java = candidates.find(file => {
+    if (file !== javaName && !fs.existsSync(file)) return false
+    const probe = spawnSync(file, ['-version'], { encoding: 'utf8', windowsHide: true, timeout: 10000 })
+    const match = /version\s+"(?:1\.)?(\d+)/i.exec((probe.stdout || '') + (probe.stderr || ''))
+    return probe.status === 0 && Number(match?.[1]) >= 17
+  })
+  if (!java) throw new Error('编译联机组件需要 Java 17 或更高版本；请设置 ZERO_DISTANCE_BUILD_JAVA 或 JAVA_HOME。')
   execFileSync(java, ['-jar', compiler, '-encoding', 'UTF-8', '-source', '8', '-target', '8', '-g:none', '-nowarn', '-d', classes, path.join(root, 'lan-agent/src/app/zerodistance/lan/LanAgent.java')], { stdio: 'inherit', windowsHide: true })
   const zip = new Zip()
   zip.addFile('META-INF/MANIFEST.MF', Buffer.from('Manifest-Version: 1.0\r\nPremain-Class: app.zerodistance.lan.LanAgent\r\n\r\n'))

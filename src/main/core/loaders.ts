@@ -158,7 +158,10 @@ function runInstallerUnlocked(javaPath: string, jar: string, emit: ProgressEmit,
   const useMirror = getSettings().mirror === 'bmclapi'
 
   const buildArgs = (withMirror: boolean): string[] => {
-    const args = ['-jar', jar, '--installClient', target]
+    // NeoForge processors fetch Mojang metadata/mappings themselves. Java does
+    // not otherwise use the desktop proxy selected by the launcher, and its
+    // default socket reads can hang indefinitely on a stalled connection.
+    const args = ['-Djava.net.useSystemProxies=true', '-Dsun.net.client.defaultConnectTimeout=15000', '-Dsun.net.client.defaultReadTimeout=30000', '-jar', jar, '--installClient', target]
     if (withMirror) args.push(`--mirror=${BMCL_MAVEN_ROOT}`)
     return args
   }

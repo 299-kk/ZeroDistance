@@ -53,6 +53,18 @@ export async function downloadFetch(url: string, init: Parameters<typeof httpFet
     }
     catch (error) {
       init?.signal?.throwIfAborted()
+      // Modrinth's mainland endpoint is a single host that can be unresolvable
+      // on some networks. The exact object is still on cdn.modrinth.com.
+      if (error instanceof TypeError) {
+        try {
+          const target = new URL(url)
+          if (target.hostname === 'cdn-alt.modrinth.com') {
+            target.hostname = 'cdn.modrinth.com'
+            url = target.href
+            continue
+          }
+        } catch { /* Keep the original failure for non-URL inputs. */ }
+      }
       // Node does not use the desktop's PAC/proxy/certificate store. Retry a failed
       // connection through Electron's system transport, retaining Range + validation.
       if (fetcher !== httpFetch || !process.versions.electron || requestInit.systemProxy || !(error instanceof TypeError)) throw error

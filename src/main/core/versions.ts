@@ -2,14 +2,15 @@
  * 版本管理：版本清单缓存、rules 评估、原版安装、已装列表、删除
  */
 import { fetchVersionCatalog } from './versionCatalog'
-import { resolveInstanceMetadata } from './instanceMetadata'
+import { isMinecraftVersionId, resolveInstanceMetadata } from './instanceMetadata'
 import { mavenIdentity } from './mavenIdentity'
 import { withFileJob } from './fileJobs'
 import { downloadLimiter } from './downloadLimits'
 import { app, shell } from 'electron'
-import { recycleVersion } from './versionRemoval'
+import { recycleVersion, recoverVersionRecycles } from './versionRemoval'
 import { samePath } from './folderPaths'
 import fs from 'node:fs'
+import AdmZip from 'adm-zip'
 import { resolveInstanceIcon } from './instanceIcons'
 import path from 'node:path'
 import type {
@@ -770,6 +771,26 @@ function versionJsonInFolder(folder: string, id: string): string {
   return path.join(folder, 'versions', id, `${id}.json`)
 }
 
+const clientVersionCache = new Map<string, { size: number; mtime: number; version?: string }>()
+/** The client itself identifies renamed vanilla profiles; never derive a version from a folder name. */
+function versionFromClientJar(file: string): string | undefined {
+  try {
+    const stat = fs.statSync(file)
+    if (!stat.isFile() || stat.size > 200 * 1024 * 1024) return undefined
+    const cached = clientVersionCache.get(file)
+    if (cached && cached.size === stat.size && cached.mtime === stat.mtimeMs) return cached.version
+    const zip = new AdmZip(file), entry = zip.getEntry('version.json')
+    let version: string | undefined
+    if (entry && entry.header.size < 1024 * 1024) {
+      const id = JSON.parse(entry.getData().toString('utf8')).id
+      if (isMinecraftVersionId(id)) version = id
+    }
+    if (clientVersionCache.size >= 256) clientVersionCache.delete(clientVersionCache.keys().next().value!)
+    clientVersionCache.set(file, { size: stat.size, mtime: stat.mtimeMs, version })
+    return version
+  } catch { return undefined }
+}
+
 /** 扫描指定 Minecraft 根目录；损坏条目不会静默消失，而以 incomplete + errors 返回。 */
 export function scanInstalledFolder(folder: string, onlyId?: string): {
   versions: InstalledVersion[]
@@ -789,27 +810,37 @@ export function scanInstalledFolder(folder: string, onlyId?: string): {
       errors: [`无法读取 versions：${error instanceof Error ? error.message : String(error)}`]
     }
   }
-  // 只有活动根目录写入运行时寻址表；全局诊断扫描不能污染当前实例映射。
-  if (path.resolve(gameDir()) === root) {
-    for (const entry of entries) registerVersionFolder(entry.name, root)
+  // Register only recognized profiles. Arbitrary folders must never become launch targets.
+  const add = (item: InstalledVersion) => {
+    if (path.resolve(gameDir()) === root) registerVersionFolder(item.id, root)
+    out.push(item)
   }
   for (const entry of entries) {
     const name = entry.name
     const jp = versionJsonInFolder(root, name)
+    const marked = fs.existsSync(path.join(dir, name, '.installing'))
     if (!fs.existsSync(jp)) {
-      out.push({ id: name, mcVersion: '未知', folder: root, incomplete: true })
-      errors.push(`${name}：缺少版本描述 ${name}.json`)
+      if (marked) { add({ id: name, mcVersion: '未知', folder: root, incomplete: true, failed: true }); errors.push(`${name}：安装未完成，缺少版本描述`) }
       continue
     }
     try {
       const j = parseVersionFile(jp)
+      if (!j || typeof j !== 'object' || Array.isArray(j) || typeof j.id !== 'string' || !j.id.trim() || !((typeof j.mainClass === 'string' && j.mainClass.trim()) || (typeof j.inheritsFrom === 'string' && j.inheritsFrom.trim()))) throw new Error('不是有效的 Minecraft 版本描述')
+      const parents: VersionJson[] = []
       const resolved = resolveInstanceMetadata(j, id => {
         try {
           const local = versionJsonInFolder(root, id)
-          return parseVersionFile(fs.existsSync(local) ? local : baseVersionJsonPath(id))
+          const parent = parseVersionFile(fs.existsSync(local) ? local : baseVersionJsonPath(id))
+          parents.push(parent)
+          return parent
         } catch { return undefined }
       })
+      const recognizableMain = [j, ...parents].some(v => /minecraft|mojang|fabricmc|quiltmc|minecraftforge|neoforged|modlauncher|bootstraplauncher/i.test(v.mainClass ?? ''))
+      const explicitVersion = [j, ...parents].some(v => isMinecraftVersionId(v.clientVersion) || isMinecraftVersionId(v._mcVersion) || isMinecraftVersionId(v.inheritsFrom))
+      const clientVersion = !j.inheritsFrom && (resolved.mcVersion === '未知' || (!recognizableMain && !explicitVersion)) ? versionFromClientJar(path.join(dir, name, `${name}.jar`)) : undefined
+      if (!recognizableMain && !explicitVersion && !clientVersion) throw new Error('无法确认这是 Minecraft 版本描述')
       const item: InstalledVersion = { id: name, mcVersion: resolved.mcVersion, loader: resolved.loader, loaderVersion: resolved.loaderVersion, folder: root }
+      if (clientVersion) item.mcVersion = clientVersion
       item.lanOffline = j._zeroDistanceLanOffline === true
       if (j._modpackName) item.modpackName = j._modpackName
       if (j._modpackVersion) item.modpackVersion = j._modpackVersion
@@ -838,10 +869,10 @@ export function scanInstalledFolder(folder: string, onlyId?: string): {
         const jar = path.join(dir, name, `${name}.jar`)
         if (!fs.existsSync(jar) || fs.existsSync(jar + '.part')) item.incomplete = true
       }
-      if (fs.existsSync(path.join(dir, name, '.installing'))) item.failed = true
-      out.push(item)
+      if (marked) item.failed = true
+      add(item)
     } catch (error) {
-      out.push({ id: name, mcVersion: '未知', folder: root, incomplete: true })
+      if (marked) add({ id: name, mcVersion: '未知', folder: root, incomplete: true, failed: true })
       errors.push(`${name}：版本描述损坏（${error instanceof Error ? error.message : String(error)}）`)
     }
   }
@@ -862,13 +893,14 @@ function sortInstalled(out: InstalledVersion[]): InstalledVersion[] {
 
 /** 当前活动游戏文件夹中的版本；切换文件夹后 UI 只看到该根目录。 */
 export function listInstalled(): InstalledVersion[] {
+  recoverVersionRecycles(gameDir())
   return sortInstalled(scanInstalledFolder(gameDir()).versions)
 }
 
 /** 诊断与全局查重使用；常规 UI 不调用，避免混淆相同 id 的多目录版本。 */
 export function listAllInstalled(): InstalledVersion[] {
   const out: InstalledVersion[] = []
-  for (const { folder } of allVersionsDirs()) out.push(...scanInstalledFolder(folder).versions)
+  for (const { folder } of allVersionsDirs()) { recoverVersionRecycles(folder); out.push(...scanInstalledFolder(folder).versions) }
   return sortInstalled(out)
 }
 

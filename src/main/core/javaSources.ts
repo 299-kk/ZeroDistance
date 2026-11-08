@@ -27,15 +27,22 @@ export async function zuluPackage(target: JavaTarget, read: ReadJson): Promise<J
   const system = os === 'mac' ? 'macos' : os, cpu = arch === 'aarch64' ? 'arm' : 'x86', archive = os === 'windows' ? 'zip' : 'tar.gz'
   const query = new URLSearchParams({ java_version: String(major), os: system, arch: cpu, hw_bitness: '64', archive_type: archive, java_package_type: 'jre', javafx_bundled: 'false', release_status: 'ga', availability_types: 'CA', latest: 'true' })
   const list = await read(`https://api.azul.com/metadata/v1/zulu/packages/?${query}`)
-  const item = Array.isArray(list) && list.find(a => a.java_version?.[0] === major && a.availability_type === 'CA' && /^[\da-f-]{36}$/i.test(a.package_uuid))
-  if (!item) throw new Error(`Azul 没有匹配 Java ${major} ${system}/${cpu} 的 JRE`)
-  const detail = await read(`https://api.azul.com/metadata/v1/zulu/packages/${item.package_uuid}`)
-  if (detail.java_version?.[0] !== major || detail.os !== system || detail.arch !== cpu || detail.hw_bitness !== 64 || detail.java_package_type !== 'jre' || detail.archive_type !== archive || detail.availability_type !== 'CA') throw new Error('Azul 返回的 Java 版本或平台不匹配')
-  const pkg = verifiedPackage('Azul Zulu', detail.download_url, detail.sha256_hash, detail.size, ['cdn.azul.com'])
-  // Azul's API size can be rounded (25/mac-arm64 reports 56,496,600 for a
-  // 56,496,636-byte archive with the correct SHA256). Get exact size from the
-  // binary response instead; never treat this hint as an integrity constraint.
-  return { ...pkg, size: undefined }
+  const candidates = Array.isArray(list) ? list.filter(a => a.java_version?.[0] === major && a.availability_type === 'CA' && /^[\da-f-]{36}$/i.test(a.package_uuid)).slice(0, 12) : []
+  if (!candidates.length) throw new Error(`Azul 没有匹配 Java ${major} ${system}/${cpu} 的 JRE`)
+  let lastError: unknown
+  // The list endpoint may return 32-bit packages despite the hw_bitness=64
+  // filter. Verify each detail response before choosing any archive.
+  for (const item of candidates) {
+    try {
+      const detail = await read(`https://api.azul.com/metadata/v1/zulu/packages/${item.package_uuid}`)
+      if (detail.java_version?.[0] !== major || detail.os !== system || detail.arch !== cpu || detail.hw_bitness !== 64 || detail.java_package_type !== 'jre' || detail.archive_type !== archive || detail.availability_type !== 'CA') throw new Error('Azul 返回的 Java 版本或平台不匹配')
+      const pkg = verifiedPackage('Azul Zulu', detail.download_url, detail.sha256_hash, detail.size, ['cdn.azul.com'])
+      // Azul metadata sizes can be rounded. Obtain the byte count from the
+      // response instead; the complete archive is still verified by SHA-256.
+      return { ...pkg, size: undefined }
+    } catch (error) { lastError = error }
+  }
+  throw new Error('Azul 返回的 Java 版本或平台不匹配，或没有可验证的下载包', { cause: lastError })
 }
 
 export async function javaPackageSize(pkg: JavaPackage, head: (url: string) => Promise<Response>): Promise<number | undefined> {

@@ -56,11 +56,12 @@ lines.on('line',line=>{
       else if(message.channel==='__native:channels')result=[...ipcMain.handlers.keys()]
       else if(message.channel==='__native:asset'){
         const candidate=String(args[0]||''),roots=getSettings().folders.map(f=>f.path)
-        const authorized=authorizeManagedImage(candidate,roots)||authorizeInstanceIcon(candidate,roots)
+        const icon=authorizeInstanceIcon(candidate,roots)
+        const authorized=authorizeManagedImage(candidate,roots)||icon
         if(!authorized)throw Error('图片未获授权')
         if(fs.statSync(authorized).size>32*1024*1024)throw Error('图片过大')
         // Transfer only the authorized path. The host streams the bytes to WebView2.
-        result={file:authorized,type:'image/'+(path.extname(authorized).slice(1).replace('jpg','jpeg'))}
+        result={file:authorized,detachIcon:!!icon,type:'image/'+(path.extname(authorized).slice(1).replace('jpg','jpeg'))}
       }else if(message.channel==='__native:plugin'){
         const id=String(args[0]||'');if(!listPlugins().some(p=>p.id===id&&p.enabled))throw Error('插件未启用')
         result={data:Buffer.from(readPluginCode(id)).toString('base64'),type:'text/javascript; charset=utf-8'}

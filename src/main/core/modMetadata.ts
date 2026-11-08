@@ -16,7 +16,7 @@ export function parseModArchive(zip: AdmZip, filePath: string, fileName: string,
     if (entry.header.size > 2 * 1024 * 1024) throw new Error(`${name} 元数据过大`)
     return zip.readAsText(entry).replace(/^\uFEFF/, '')
   }
-  const records: Array<{ loader: LoaderName; id: string; name: string; version: string; mcRange: string; loaderRange: string; requirements: ModRequirement[]; icon?: string }> = []
+  const records: Array<{ loader: LoaderName; id: string; name: string; version: string; mcRange: string; loaderRange: string; requirements: ModRequirement[]; incompatibilities?: ModRequirement[]; icon?: string }> = []
   const provides: Array<{ id: string; version: string }> = []
   const nested: string[] = []
   const requirements = (deps: RecordValue, dialect: 'fabric' | 'quilt' = 'fabric'): ModRequirement[] => Object.entries(deps)
@@ -25,7 +25,7 @@ export function parseModArchive(zip: AdmZip, filePath: string, fileName: string,
     const fabric = read('fabric.mod.json')
     if (fabric) {
       const j = JSON.parse(fabric), dep = j.depends ?? {}
-      records.push({ loader: 'fabric', id: j.id, name: j.name ?? j.id, version: String(j.version ?? ''), mcRange: dependencyRange(dep.minecraft), loaderRange: dependencyRange(dep.fabricloader), requirements: requirements(dep), icon: typeof j.icon === 'string' ? j.icon : Object.values(j.icon ?? {})[0] as string })
+      records.push({ loader: 'fabric', id: j.id, name: j.name ?? j.id, version: String(j.version ?? ''), mcRange: dependencyRange(dep.minecraft), loaderRange: dependencyRange(dep.fabricloader), requirements: requirements(dep), incompatibilities: requirements(j.breaks ?? {}), icon: typeof j.icon === 'string' ? j.icon : Object.values(j.icon ?? {})[0] as string })
       for (const id of j.provides ?? []) if (typeof id === 'string') provides.push({ id, version: String(j.version ?? '') })
       nested.push(...(j.jars ?? []).map((v: { file: string }) => v.file))
     }
@@ -42,7 +42,9 @@ export function parseModArchive(zip: AdmZip, filePath: string, fileName: string,
           deps[id] = deps[id] === undefined ? d.versions ?? '*' : { all: [deps[id], d.versions ?? '*'] }
         }
       }
-      records.push({ loader: 'quilt', id: j.id, name: j.metadata?.name ?? j.id, version: String(j.version ?? ''), mcRange: dependencyRange(deps.minecraft, 'quilt'), loaderRange: dependencyRange(deps.quilt_loader, 'quilt'), requirements: requirements(deps, 'quilt'), icon: j.metadata?.icon })
+      const breaks: RecordValue = {}
+      for (const raw of j.breaks ?? []) { const d = typeof raw === 'string' ? { id: raw, versions: '*' } : raw; if (d?.id && !d.unless && d.environment !== 'server') breaks[d.id.split(':').pop()] = d.versions ?? '*' }
+      records.push({ loader: 'quilt', id: j.id, name: j.metadata?.name ?? j.id, version: String(j.version ?? ''), mcRange: dependencyRange(deps.minecraft, 'quilt'), loaderRange: dependencyRange(deps.quilt_loader, 'quilt'), requirements: requirements(deps, 'quilt'), incompatibilities: requirements(breaks, 'quilt'), icon: j.metadata?.icon })
       for (const p of j.provides ?? []) provides.push({ id: (typeof p === 'string' ? p : p.id).split(':').pop(), version: String(p.version ?? j.version ?? '') })
       nested.push(...(j.jars ?? []).map((v: string | { file: string }) => typeof v === 'string' ? v : v.file))
     }
@@ -63,7 +65,7 @@ export function parseModArchive(zip: AdmZip, filePath: string, fileName: string,
         records.push({ loader, id: m.modId, name: m.displayName ?? m.modId, version,
           mcRange: own.filter(d => d.modId === 'minecraft').map(d => d.versionRange ?? '*').join(' && '),
           loaderRange: own.filter(d => d.modId === loader).map(d => d.versionRange ?? '*').join(' && ') || (loader === 'forge' && /^(javafml|lowcodefml)$/.test(j.modLoader ?? '') ? j.loaderVersion ?? '' : ''),
-          requirements: own.filter(d => !builtins.has(d.modId)).map(d => ({ id: d.modId, range: d.versionRange ?? '*' })), icon: m.logoFile ?? j.logoFile })
+          requirements: own.filter(d => !builtins.has(d.modId)).map(d => ({ id: d.modId, range: d.versionRange ?? '*' })), incompatibilities: (j.dependencies?.[m.modId] ?? []).filter((d: RecordValue) => d.type === 'incompatible' && String(d.side ?? 'BOTH').toUpperCase() !== 'SERVER' && !builtins.has(d.modId)).map((d: RecordValue) => ({ id: d.modId, range: d.versionRange ?? '*' })), icon: m.logoFile ?? j.logoFile })
       }
     }
     if (!records.length) {
@@ -83,7 +85,7 @@ export function parseModArchive(zip: AdmZip, filePath: string, fileName: string,
     if (!records.length || !records[0].id) throw new Error('未找到有效的 MOD 元数据 / mod id')
     const first = records[0]
     Object.assign(info, first, { dependencies: first.requirements.map(d => d.id) })
-    info.variants = records.map(r => ({ loader: r.loader, mcRange: r.mcRange, loaderRange: r.loaderRange, requirements: r.requirements }))
+    info.variants = records.map(r => ({ loader: r.loader, mcRange: r.mcRange, loaderRange: r.loaderRange, requirements: r.requirements, incompatibilities: r.incompatibilities }))
     provides.push(...records.map(r => ({ id: r.id, version: r.version })))
     const jarjar = read('META-INF/jarjar/metadata.json')
     if (jarjar) nested.push(...(JSON.parse(jarjar).jars ?? []).map((j: RecordValue) => j.path))

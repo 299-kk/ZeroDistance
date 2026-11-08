@@ -20,6 +20,7 @@ import type {
 } from '../../shared/types'
 import type { DownloadTask } from './download'
 import { prepareModpackFiles } from './modpackDownloads'
+import { moveDirectoryWithRetry } from './directoryMove'
 import { runParallelTasks } from './parallelTasks'
 import { ParallelProgress } from './parallelProgress'
 import { resolveCurseForgeMetadata, resolveCurseForgeFileUrl, constructCurseForgeCdnUrl, probeCurseForgeCdnUrl, curseForgeInstallDir, exactModrinthDownload } from './curseforgeDownload'
@@ -993,7 +994,7 @@ async function installModpackInFolder(filePath: string, emit: ProgressEmit, opts
     await backupInstance({folder:targetFolder,id},'整合包覆盖前',true,undefined,opts?.signal)
     oldManaged = readManagedFiles(currentDir)
     backupDir = path.join(path.dirname(currentDir), `.${path.basename(currentDir)}.kamucl-backup-${crypto.randomUUID()}`)
-    fs.renameSync(currentDir, backupDir)
+    await moveDirectoryWithRetry(currentDir, backupDir, opts?.signal)
   } else if (action === 'rename') {
     id = requestedName
     if (fs.existsSync(path.join(targetFolder, 'versions', id))) throw new Error(`实例名称已存在：${id}`)
@@ -1099,13 +1100,14 @@ async function installModpackInFolder(filePath: string, emit: ProgressEmit, opts
           const downloadProgress: Parameters<typeof prepareModpackFiles>[1] = (d, t, speed, detail) => {
             const doneBytes = detail.bytesDone
             const ratio = detail.fraction ?? 0
+            const retry = detail.retryingFiles ? ` · ${detail.retryingFiles} 个文件等待重试` : ''
             parallel.update('pack', {
               stage: 'modpack',
               progress: 0.04 + ratio * 0.96,
               text:
                 detail.bytesTotal != null
-                  ? `下载整合包文件 ${d}/${t}（${fmtMB(doneBytes)}/${fmtMB(detail.bytesTotal)}）${detail.activeFiles?.length && detail.activeFiles.length <= 2 ? ' · ' + detail.activeFiles.join('、') : ''}`
-                  : `下载整合包文件 ${d}/${t}`,
+                  ? `下载整合包文件 ${d}/${t}（${fmtMB(doneBytes)}/${fmtMB(detail.bytesTotal)}）${detail.activeFiles?.length && detail.activeFiles.length <= 2 ? ' · ' + detail.activeFiles.join('、') : ''}${retry}`
+                  : `下载整合包文件 ${d}/${t}${retry}`,
               speed,
               etaSeconds: detail.etaSeconds ?? undefined,
               bytesDone: detail.bytesDone,

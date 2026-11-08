@@ -122,7 +122,7 @@ test('modified Vue components compile with real scripts and templates', () => {
   }
 })
 
-test('real dependency download waits for consent, verifies JAR and commits into isolated folder without duplicates', async () => {
+test('dependency checks download to staging, then commit to isolated folder without duplicates', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kamucl-dependencies-test-'))
   let requests = 0
   const jar = (id: string, depends = {}) => {
@@ -137,7 +137,7 @@ test('real dependency download waits for consent, verifies JAR and commits into 
   const repo = { files: async () => [file], exact: async () => file, find: async () => file }
   try {
     const cancelled = await prepareModInstall(target, { paths: [source] }, () => {}, undefined, repo)
-    assert.equal(requests, 0, 'must not download a dependency before confirmation')
+    assert.equal(requests, 1, 'dependency metadata is inspected in staging before confirmation')
     assert.equal(cancelled.files.filter(f => f.dependency).length, 1)
     discardModPlan(cancelled.id)
     assert(!fs.existsSync(target.gameDirectory!))
@@ -148,20 +148,43 @@ test('real dependency download waits for consent, verifies JAR and commits into 
       return target
     }, () => {}), /游戏已开始运行/)
     assert(!fs.existsSync(target.gameDirectory!), 'a session starting during download must prevent all writes')
-    assert.equal(requests, 1)
+    assert.equal(requests, 2)
     const plan = await prepareModInstall(target, { paths: [source] }, () => {}, undefined, repo)
     await executeModPlan(plan.id, true, () => target, () => {})
-    assert.equal(requests, 2)
+    assert.equal(requests, 3)
     assert.deepEqual(fs.readdirSync(path.join(target.gameDirectory!, 'mods')).sort(), ['front.jar', 'my-mod.jar'])
     assert(!fs.existsSync(path.join(root, 'mods')))
     const repeat = await prepareModInstall(target, { paths: [source] }, () => {}, undefined, repo)
     assert.equal(repeat.missing.length, 0)
     assert.equal(repeat.files.filter(f => f.dependency).length, 0)
     await executeModPlan(repeat.id, true, () => target, () => {})
-    assert.equal(requests, 2)
+    assert.equal(requests, 3)
     assert.equal(fs.readdirSync(path.join(target.gameDirectory!, 'mods')).length, 2)
     await assert.rejects(executeModPlan(plan.id, true, () => target, () => {}), /过期/)
   } finally { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); fs.rmSync(root, { recursive: true, force: true }) }
+})
+
+test('在线安装清单合并前置，确认前阻止声明冲突，移除冲突后整体安装', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zd-mod-list-'))
+  const jar = (id: string, extra = {}) => { const zip = new AdmZip(); zip.addFile('fabric.mod.json', Buffer.from(JSON.stringify({ id, version: '1.2.3', depends: { minecraft: '1.20.1', fabricloader: '>=0.15' }, ...extra }))); return zip.toBuffer() }
+  const bytes = { alpha: jar('alpha'), beta: jar('beta', { breaks: { alpha: '*' } }), dep: jar('dep') }
+  const server = http.createServer((req, res) => { const name = (req.url || '').slice(1) as keyof typeof bytes; const data = bytes[name]; if (!data) { res.writeHead(404); res.end(); return } res.writeHead(200, { 'content-length': data.length }); res.end(data) })
+  await new Promise<void>(r => server.listen(0, '127.0.0.1', r))
+  const target: InstalledVersion = { id:'test', folder:root, gameDirectory:path.join(root,'game'), isolated:true, mcVersion:'1.20.1', loader:'fabric', loaderVersion:'0.16.0' }
+  const file = (id: keyof typeof bytes): CommunityFile => ({ source:'modrinth',projectId:id,fileId:id,fileName:id+'.jar',version:'1.2.3',url:`http://127.0.0.1:${(server.address() as any).port}/${id}`,sha1:crypto.createHash('sha1').update(bytes[id]).digest('hex'),size:bytes[id].length,gameVersions:['1.20.1'],loaders:['fabric'],date:'',releaseType:'release',dependencies:id==='alpha'?[{projectId:'dep',required:true}]:[] })
+  const files = { alpha:file('alpha'), beta:file('beta'), dep:file('dep') }
+  const repo = { exact:async (_source: any, project: any) => files[project as keyof typeof files], files:async (_source: any, project: any) => [files[project as keyof typeof files]], find:async () => undefined }
+  try {
+    const blocked = await prepareModInstall(target, { files:[files.alpha,files.beta] }, () => {}, undefined, repo)
+    assert(blocked.warnings.some(x => x.includes('不兼容')))
+    assert(!fs.existsSync(target.gameDirectory!))
+    await assert.rejects(executeModPlan(blocked.id, true, () => target, () => {}), /冲突/)
+    assert(!fs.existsSync(target.gameDirectory!))
+    const ready = await prepareModInstall(target, { files:[files.alpha] }, () => {}, undefined, repo)
+    assert.equal(ready.warnings.length, 0); assert.equal(ready.files.length, 2)
+    await executeModPlan(ready.id, true, () => target, () => {})
+    assert.deepEqual(fs.readdirSync(path.join(target.gameDirectory!, 'mods')).sort(), ['alpha.jar','dep.jar'])
+  } finally { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); fs.rmSync(root, { recursive:true, force:true }) }
 })
 
 test('multi-mod JAR must satisfy every same-loader descriptor, including a Forge FML-only bound', () => {
@@ -199,6 +222,19 @@ test('external runtime reuse follows exact coordinates, preserves existing bytes
     assert.equal(reuseExternalRuntimeLibraries(profile, [source], shared, []), 0)
     assert.equal(fs.readFileSync(target, 'utf8'), 'existing')
     assert.deepEqual(fs.readdirSync(path.dirname(path.dirname(target))), ['26.2.0.66'])
+  } finally { fs.rmSync(root, { recursive: true, force: true }) }
+})
+
+test('旧版 Forge 从其他游戏目录复用动态运行库和客户端映射', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zd-forge-runtime-'))
+  try {
+    const source = path.join(root, 'other'), dest = path.join(root, 'shared')
+    const files = ['net/minecraftforge/forge/1.16.5-36.2.42/forge-1.16.5-36.2.42-universal.jar', 'net/minecraftforge/forge/1.16.5-36.2.42/forge-1.16.5-36.2.42-client.jar', 'net/minecraft/client/1.16.5-20210115.111550/client-1.16.5-20210115.111550-extra.jar']
+    for (const rel of files) { const file = path.join(source, 'libraries', rel); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, rel) }
+    const profile = { id: 'custom', arguments: { game: ['--fml.forgeVersion', '36.2.42', '--fml.mcVersion', '1.16.5', '--fml.mcpVersion', '20210115.111550'] } }
+    assert.equal(reuseExternalRuntimeLibraries(profile, [source], dest, []), 3)
+    for (const rel of files) assert.equal(fs.readFileSync(path.join(dest, rel), 'utf8'), rel)
+    assert.equal(reuseExternalRuntimeLibraries(profile, [source], dest, []), 0)
   } finally { fs.rmSync(root, { recursive: true, force: true }) }
 })
 

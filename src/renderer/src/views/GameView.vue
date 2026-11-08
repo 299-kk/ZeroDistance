@@ -698,6 +698,9 @@ const folderShortName = (p: string): string => {
 
 /** 收藏置顶 + 组内最近游玩倒序 */
 const sortedInstalled = computed(() => sortWithFavorite(allInstalled.value.filter(v => !installedFolder.value || folderKey(v.folder) === folderKey(installedFolder.value === '@current' ? activeFolder.value : installedFolder.value)).filter(v => `${displayVersionName(v)} ${v.mcVersion || ''} ${v.loader || ''} ${folderShortName(v.folder)}`.toLowerCase().includes(installedSearch.value.trim().toLowerCase()))))
+const readyInstalledTotal = computed(() => allInstalled.value.filter(v => !v.incomplete && !v.failed).length)
+const readyInstalledCount = computed(() => sortedInstalled.value.filter(v => !v.incomplete && !v.failed).length)
+const pendingInstalledCount = computed(() => sortedInstalled.value.length - readyInstalledCount.value)
 /** 已收藏分组（不含残缺/失败版本） */
 const favoriteInstalled = computed(() =>
   store.installed.filter((v) => isFavorite(v.id, v.folder) && !v.incomplete && !v.failed)
@@ -961,7 +964,7 @@ async function confirmIsolation() {
           版本下载
         </button>
         <button class="game-tab" data-tab="installed" :class="{ active: tab === 'installed' }" @click="tab = 'installed'">
-          已安装<template v-if="allInstalled.length">（{{ allInstalled.length }}）</template>
+          已安装<template v-if="readyInstalledTotal">（{{ readyInstalledTotal }}）</template>
         </button>
       </div>
 
@@ -1159,7 +1162,7 @@ async function confirmIsolation() {
         <span class="muted">显示范围</span>
         <SelectMenu v-model="installedFolder" :options="installedFolderOptions" aria-label="已安装实例显示范围" />
         <label class="installed-search"><input v-model="installedSearch" class="input" aria-label="搜索已安装实例" placeholder="搜索实例名称、版本…" /></label>
-        <span class="muted scope-count">{{ sortedInstalled.length }} 个实例</span>
+        <span class="muted scope-count">{{ readyInstalledCount }} 个已安装<template v-if="pendingInstalledCount"> · {{ pendingInstalledCount }} 个待处理</template></span>
         <button class="btn btn-ghost btn-sm" :disabled="installedLoading" @click="refreshAllInstalled">{{ installedLoading ? '刷新中…' : '刷新列表' }}</button>
       </div>
       <p v-if="installedError" class="error" role="alert">{{ installedError }}</p>
@@ -1190,7 +1193,7 @@ async function confirmIsolation() {
               <VersionSize :version="v" />
               <span class="instance-directory" :title="v.folder">{{ folderShortName(v.folder) }}</span>
               <span :title="v.gameDirectory || v.folder">{{ v.isolated ? '已隔离' : '共享目录' }}</span>
-              <span v-if="v.incomplete" class="error">下载未完成</span><span v-else-if="v.failed" class="error">安装失败</span>
+              <span v-if="v.failed" class="error">安装未完成</span><span v-else-if="v.incomplete" class="error">下载未完成</span>
               <span v-else-if="v.modpackName" :title="v.modpackName">整合包</span>
             </div>
           </div>

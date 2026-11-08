@@ -215,10 +215,15 @@ const LOADER_NAMES = new Set(['forge', 'fabric', 'quilt', 'neoforge'])
 
 async function cfFetch(p: string): Promise<unknown> {
   const ch = cfChannel()
-  if (ch.official) {
-    return fetchJson(ch.base + p, { 'x-api-key': ch.key })
+  if (!ch.official) return fetchJson(ch.base + p)
+  let lastError: unknown
+  // The mirror may not yet contain every file; prefer the authoritative
+  // catalogue and fall back without sharing the API key with the mirror.
+  for (const mirror of [false, true]) {
+    try { return await fetchJson((mirror ? CF_MIRROR : ch.base) + p, mirror ? {} : { 'x-api-key': ch.key }) }
+    catch (error) { requestSignal.getStore()?.throwIfAborted(); lastError = error }
   }
-  return fetchJson(ch.base + p)
+  throw lastError
 }
 
 interface CfMod {
@@ -396,12 +401,18 @@ export async function communitySearchPage(input: CommunityQuery): Promise<Commun
     else warnings.push(`${sources[i] === 'modrinth' ? 'Modrinth' : 'CurseForge'} 暂不可用，当前仅统计另一来源；可重试或切换来源。`)
   })
   const slots = communityPageSlots(totals, q.offset, q.limit)
-  const pages = await Promise.all(sources.map(async source => {
+  const pageResults = await Promise.allSettled(sources.map(async source => {
     const own = slots.filter(slot => slot.source === source)
     if (!own.length) return { source, offset: 0, items: [] as CommunityResult[] }
     const page = await providerSearch(source, { ...q, source, offset: own[0].index, limit: own.length })
     return { source, offset: own[0].index, items: page.items }
   }))
+  const pages = pageResults.map((result, i) => {
+    if (result.status === 'fulfilled') return result.value
+    warnings.push(`${sources[i] === 'modrinth' ? 'Modrinth' : 'CurseForge'} 搜索结果暂时不可用，请重试。`)
+    return { source: sources[i], offset: 0, items: [] as CommunityResult[] }
+  })
+  if (pageResults.every(r => r.status === 'rejected')) throw (pageResults[0] as PromiseRejectedResult).reason
   const items = slots.flatMap(slot => {
     const page = pages.find(p => p.source === slot.source)!
     const item = page.items[slot.index - page.offset]

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
-import { recycleVersion } from '../src/main/core/versionRemoval'
+import { recycleVersion, recoverVersionRecycles } from '../src/main/core/versionRemoval'
 import { parseFrpLine, frpLineReader } from '../src/main/core/frpLog'
 
 test('FRP 中文成功日志、通用域名与运营商地址，地址不能单独证明连接成功', () => {
@@ -41,15 +41,37 @@ test('删除失败不预删描述文件或存档；固定目录、拒绝越界�
   await assert.rejects(recycleVersion(root, '中文 版本', deps), /回收站.*权限/s)
   assert.equal(await fs.readFile(path.join(dir, '中文 版本.json'), 'utf8'), '{}')
   assert.equal(await fs.readFile(path.join(dir, 'saves', 'level.dat'), 'utf8'), 'keep')
+  await assert.rejects(recycleVersion(root, '中文 版本', { assertIdle: async () => {}, trash: async () => {} }), /系统未移除/)
+  assert.equal(await fs.readFile(path.join(dir, 'saves', 'level.dat'), 'utf8'), 'keep')
+  assert.deepEqual(await fs.readdir(path.dirname(dir)), ['中文 版本'])
   let called = false
   const safe = { assertIdle: async () => { throw new Error('正在运行') }, trash: async () => { called = true } }
   await assert.rejects(recycleVersion(root, '中文 版本', safe), /正在运行/)
   for (const id of ['../outside', '..', '.', 'C:\\outside', 'bad:ads']) await assert.rejects(recycleVersion(root, id, safe), /无效|超出/)
   assert.equal(called, false)
   await recycleVersion(root, '中文 版本', { assertIdle: async () => {}, trash: async target => {
-    assert.equal(target, dir); await fs.rename(target, path.join(root, 'recycled'))
+    assert.equal(path.dirname(target), path.dirname(dir)); assert.match(path.basename(target), /^中文 版本-ZD-/)
+    assert.equal(await fs.readFile(path.join(target, 'saves', 'level.dat'), 'utf8'), 'keep')
+    await fs.rename(target, path.join(root, 'recycled'))
   } })
   assert.equal(await fs.readFile(path.join(root, 'recycled', 'saves', 'level.dat'), 'utf8'), 'keep')
+})
+
+test('中断的回收目录可以恢复，已占用的原目录不会被覆盖', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'zero-recover-'))
+  t.after(() => fs.rm(root, { recursive: true, force: true }))
+  const parent = path.join(root, 'versions'), token = '00000000-0000-4000-8000-000000000001'
+  const staged = `旧实例-ZD-${token}`, journal = path.join(parent, `.zerodistance-recycle-${token}.json`)
+  await fs.mkdir(path.join(parent, staged), { recursive: true })
+  await fs.writeFile(path.join(parent, staged, 'save.dat'), 'preserve')
+  await fs.writeFile(journal, JSON.stringify({ version: 1, id: '旧实例', staged, pid: 2147483647 }))
+  await fs.mkdir(path.join(parent, '旧实例'))
+  recoverVersionRecycles(root)
+  assert.equal(await fs.readFile(path.join(parent, staged, 'save.dat'), 'utf8'), 'preserve')
+  await fs.rmdir(path.join(parent, '旧实例'))
+  recoverVersionRecycles(root)
+  assert.equal(await fs.readFile(path.join(parent, '旧实例', 'save.dat'), 'utf8'), 'preserve')
+  await assert.rejects(fs.stat(journal), { code: 'ENOENT' })
 })
 
 test('删除拒绝目录链接，不接触链接目标', async t => {

@@ -1,6 +1,21 @@
 /** ZeroDistance built-in release notes. Upstream history is preserved in docs/upstream. */
 export interface UpdateNote { version: string; date: string; title?: string; summary?: string; phase?: 'preview' | 'validation'; testingNotes?: string[]; changes: string[] }
 export const updateNotes: UpdateNote[] = [{
+ version: '0.3.7', date: '2026-11-08', phase: 'preview', title: '安装清单与下载修复',
+ summary: '新增模组安装清单，改善整合包搜索、导入和旧版游戏启动。',
+ changes: [
+  '新增模组安装清单：批量检查已声明的依赖、版本和冲突，确认后一次安装。',
+  '整合包搜索默认覆盖全部来源与游戏版本，CurseForge 官方查询不可用时尝试镜像。',
+  '根据游戏版本及可读取的整合包和模组声明匹配 Java，必要时准备对应运行环境。',
+  '修复实例图标占用导致删除失败，以及部分旧版 Forge 跨目录启动时缺少运行库的问题。',
+  'NeoForge 安装器遵循系统代理，并为等待网络的请求设置超时。',
+  '整合包导入时单个文件断连不再中止整批下载：失败文件自动等待后重试，已完成并校验的文件继续保留。',
+  '下载源调整：Minecraft 资源使用 BMCLAPI，CurseForge 与 Modrinth 文件优先尝试 MCIM 国内缓存，未缓存或不可用时自动回退官方 CDN。',
+  'Modrinth 文件保留 cdn.modrinth.com 与 cdn-raw.modrinth.com 两个官方入口；区域跳转的 cdn-alt 无法解析时改回 cdn.modrinth.com。',
+  '下载中心显示等待重试的文件数量；设置页说明国内镜像优先与官方源的实际取源顺序。'
+ ],
+ testingNotes: ['本版为公开预览测试版。', '已用本地受控断连与 503 场景验证单文件重试和整批继续下载；不同运营商到 Modrinth 官方 CDN 的速度差异较大，未缓存的大文件仍可能较慢。', '镜像为第三方服务，各地网络条件不同；更新后的账号、游戏目录与设置保留情况欢迎实际验证。']
+}, {
  version: '0.3.6', date: '2026-11-06', phase: 'preview', title: '默认配置同步',
  summary: '集中管理游戏选项、按键和默认材质包的同步。',
  changes: ['默认配置新增一键同步开关，可同时控制游戏选项、按键和默认材质包，并显示各项状态。', '修改游戏选项或按键时自动开启对应同步，保留单独关闭的选择。', '游戏启动时应用已启用的配置；按键同步支持 Minecraft 1.13 及以上。'],

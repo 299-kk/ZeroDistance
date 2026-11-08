@@ -14,7 +14,7 @@ using Microsoft.Web.WebView2.WinForms;
 using Microsoft.VisualBasic.FileIO;
 
 internal sealed partial class LauncherWindow : Form {
-    const string Origin="https://zerodistance-native.test/",Version="0.3.6";
+    const string Origin="https://zerodistance-native.test/",Version="0.3.7";
     public static string CurrentAppVersion {get{return Version;}}
     const string LegacyStorageUrl="https://zerodistance-native.local/__ui_migration.html";
     WebView2 browser=new WebView2();
@@ -354,7 +354,16 @@ internal sealed partial class LauncherWindow : Form {
                     string file=Json.Str(result,"file");int width;var query=System.Web.HttpUtility.ParseQueryString(uri.Query);
                     if(Int32.TryParse(query["width"],out width)&&width>=32&&width<=512){string thumb=await ImageThumbnails.Get(file,dataDirectory,width);if(thumb!=file){type="image/png";file=thumb;}}
                     if(closing||lowMemory)return;
-                    body=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete,65536,FileOptions.SequentialScan);
+                    if(Json.Bool(result,"detachIcon")){
+                        // WebView2 may retain response streams after the image loads.
+                        // Copy bounded instance icons and close the source before responding,
+                        // so the instance directory remains movable and recyclable.
+                        const int maxIconBytes=5*1024*1024;
+                        using(var input=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete,65536,FileOptions.SequentialScan)){
+                            if(input.Length>maxIconBytes)throw new Exception("实例图标过大");
+                            var copy=new MemoryStream();try{var chunk=new byte[65536];int read;while((read=input.Read(chunk,0,chunk.Length))>0){if(copy.Length+read>maxIconBytes)throw new Exception("实例图标过大");copy.Write(chunk,0,read);}copy.Position=0;body=copy;}catch{copy.Dispose();throw;}
+                        }
+                    }else body=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete,65536,FileOptions.SequentialScan);
                 }else body=new MemoryStream(Convert.FromBase64String(Json.Str(result,"data")));
                 try{e.Response=responseEnvironment.CreateWebResourceResponse(body,200,"OK","Content-Type: "+type+"\r\nAccess-Control-Allow-Origin: "+Origin.TrimEnd('/')+"\r\nX-Content-Type-Options: nosniff\r\nCache-Control: no-store");}catch{body.Dispose();throw;}
             }catch(Exception error){if(closing||lowMemory)return;Log("asset",error.Message);e.Response=responseEnvironment.CreateWebResourceResponse(new MemoryStream(new byte[0]),404,"Not Found","Content-Type: text/plain");}

@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),zlib=require('node:zlib'),{execFileSync}=require('node:child_process'),Zip=require('adm-zip'),sharp=require('sharp'),esbuild=require('esbuild')
-const project=path.resolve(__dirname,'..'),root=path.resolve(project,'..'),out=path.join(project,'out'),cache=path.join(root,'.qa/migration-tools'),lock=require('../dependencies.lock.json')
+const project=path.resolve(__dirname,'..'),root=path.resolve(project,'..'),out=process.env.ZERO_DISTANCE_NATIVE_OUT?path.resolve(process.env.ZERO_DISTANCE_NATIVE_OUT):path.join(project,'out'),cache=path.join(root,'.qa/migration-tools'),lock=require('../dependencies.lock.json')
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex')
 function copy(a,b){fs.mkdirSync(path.dirname(b),{recursive:true});fs.copyFileSync(a,b)}
 async function tool(record,name){fs.mkdirSync(cache,{recursive:true});const file=path.join(cache,name);if(fs.existsSync(file)&&hash(fs.readFileSync(file))===record.sha256)return file;const response=await fetch(record.url,{signal:AbortSignal.timeout(120000)});if(!response.ok)throw Error('Dependency HTTP '+response.status);const bytes=Buffer.from(await response.arrayBuffer());if(hash(bytes)!==record.sha256)throw Error('Dependency checksum mismatch: '+name);fs.writeFileSync(file,bytes);return file}

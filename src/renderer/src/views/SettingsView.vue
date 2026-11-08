@@ -741,13 +741,14 @@ async function onRemovePlugin(p: PluginInfo) {
           <div data-ui="SettingsView:7039ff11fe3c" class="mirror-options">
             <label data-ui="SettingsView:3dd4d470872e" class="mirror-option" :class="{ active: store.settings.mirror === 'official' }">
               <input data-ui="SettingsView:2f522f16f088" v-model="store.settings.mirror" type="radio" value="official" @change="save({ mirror: 'official' })" />
-              <span>官方源</span>
+              <span>官方源（海外，可能较慢）</span>
             </label>
             <label data-ui="SettingsView:4948cbbe2972" class="mirror-option" :class="{ active: store.settings.mirror === 'bmclapi' }">
               <input data-ui="SettingsView:6cf3093424b7" v-model="store.settings.mirror" type="radio" value="bmclapi" @change="save({ mirror: 'bmclapi' })" />
-              <span>BMCLAPI 镜像（国内更快）</span>
+              <span>国内镜像优先（推荐）</span>
             </label>
           </div>
+          <p class="muted group-hint">国内镜像优先时，Minecraft 资源走 BMCLAPI，CurseForge 与 Modrinth 文件先尝试 MCIM 国内缓存；未缓存或镜像不可用时自动回退官方源，并继续使用已下载的部分重试。</p>
         </div>
       </div>
 

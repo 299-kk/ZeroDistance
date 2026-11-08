@@ -134,7 +134,7 @@ export async function exactModrinthDownload(file: ResolvedCfFile, signal?: Abort
       const exact = data.files?.find(f => f.size === file.size && f.hashes?.sha1?.toLowerCase() === file.sha1.toLowerCase())
       if (exact?.url) {
         const url = new URL(exact.url)
-        if (url.protocol === 'https:' && url.hostname === 'cdn.modrinth.com') return exact.url
+        if (url.protocol === 'https:' && ['cdn.modrinth.com', 'cdn-raw.modrinth.com'].includes(url.hostname)) return exact.url
       }
     } catch { signal?.throwIfAborted() }
   }

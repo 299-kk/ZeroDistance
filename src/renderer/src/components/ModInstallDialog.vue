@@ -4,7 +4,7 @@ import type { CommunityFile, InstalledVersion, ModInstallPlan } from '@shared/ty
 import { prepareModInstall, commitModInstall, discardModInstall, errText } from '../api'
 import { store, toast } from '../store'
 import MarqueeText from './MarqueeText.vue'
-const props = defineProps<{ target: InstalledVersion; input: { paths?: string[]; file?: CommunityFile } }>()
+const props = defineProps<{ target: InstalledVersion; input: { paths?: string[]; file?: CommunityFile; files?: CommunityFile[] } }>()
 const emit = defineEmits<{ close: []; installed: [] }>()
 const plan = ref<ModInstallPlan>(), busy = ref(true), error = ref('')
 const minimized = ref(true)
@@ -14,7 +14,7 @@ onMounted(async () => {
     const result = await prepareModInstall({ id: props.target.id, folder: props.target.folder! }, props.input)
     if (disposed) { void discardModInstall(result.id); return }
     plan.value = result
-    if (minimized.value) toast('前置已检查完成，点击右下角任务确认安装', 'info')
+    if (minimized.value) toast(result.warnings.length ? '安装清单需要处理冲突，点击右下角查看' : '前置已检查完成，点击右下角任务确认安装', 'info')
   } catch (e) { error.value = errText(e) }
   finally { busy.value = false }
 })
@@ -30,7 +30,7 @@ async function install() {
 }
 </script>
 <template>
-  <Teleport to="body"><button v-if="minimized" class="modinstall-background" @click="minimized = false"><span v-if="busy" class="spin"></span><span><strong>{{ busy ? plan ? '正在安装 MOD' : '正在获取前置' : error ? '前置检查失败' : '前置已就绪 · 点击确认' }}</strong><small>{{ target.id }}</small></span><span>↗</span></button><div v-else class="modal-mask" style="z-index: 10020" @pointerdown.self="minimized = true">
+  <Teleport to="body"><button v-if="minimized" class="modinstall-background" @click="minimized = false"><span v-if="busy" class="spin"></span><span><strong>{{ busy ? plan ? '正在安装 MOD' : '正在检查模组与前置' : error ? '前置检查失败' : plan?.warnings.length ? '发现冲突 · 点击查看' : '前置已就绪 · 点击确认' }}</strong><small>{{ target.id }}</small></span><span>↗</span></button><div v-else class="modal-mask" style="z-index: 10020" @pointerdown.self="minimized = true">
     <section class="modal modinstall-modal" role="dialog" aria-modal="true" aria-label="安装 MOD 与前置">
       <header class="modinstall-head"><h3 class="modal-title">安装 MOD 与前置</h3><button class="btn btn-ghost btn-sm" aria-label="最小化前置任务" @click="minimized = true">最小化 −</button></header>
       <p class="muted modinstall-sub">{{ target.id }} · MC {{ target.mcVersion }} · {{ target.loader }} {{ target.loaderVersion }}<br>{{ target.folder }}</p>
@@ -39,7 +39,7 @@ async function install() {
         <div v-for="f in plan.files" :key="f.fileName" class="dependency-row"><span class="tag">{{ f.dependency ? '缺失前置' : '所选 MOD' }}</span><div class="dependency-name"><MarqueeText :text="f.fileName"/><MarqueeText :text="f.version"/></div></div>
         <p v-if="plan.missing.length" class="muted modal-note">元数据要求：{{ plan.missing.join('、') }}</p>
         <p v-for="warning in plan.warnings" :key="warning" class="modal-error">{{ warning }}</p>
-        <p class="modal-note">是否一键下载缺失前置并安装？已有兼容前置将复用；若检测到冲突，将停止且不覆盖原文件。</p>
+        <p class="modal-note">已检查已声明的前置、版本与冲突。已有兼容前置将复用；安装前会再次检查，不会覆盖原文件。未声明的冲突可能无法发现。</p>
       </template>
       <p v-if="error" class="modal-error">{{ error }}</p>
       <div class="modal-actions"><button class="btn btn-ghost" :disabled="busy" @click="emit('close')">{{ error ? '关闭并重新选择' : '取消' }}</button><button v-if="plan" class="btn btn-gold" :disabled="busy || !!plan.warnings.length" @click="install">{{ plan.files.some(f => f.dependency) ? '一键下载前置并安装' : '确认安装' }}</button></div>

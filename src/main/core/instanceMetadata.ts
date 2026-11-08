@@ -2,6 +2,11 @@ import type { VersionJson } from './versions'
 import { normalizeLoader, normalizeLoaderVersion } from '../../shared/modCompatibility'
 import type { LoaderName } from '../../shared/types'
 
+/** A renamed profile id is a display name, not evidence of a Minecraft version. */
+export function isMinecraftVersionId(value: unknown): value is string {
+  return typeof value === 'string' && /^(?:\d+\.\d+(?:\.\d+)?(?:[-_][\w.-]+)?|\d{2}w\d{2}[a-z](?:[-_][\w.-]+)?|[abc]\d+(?:\.\d+)+(?:[-_][\w.-]+)?|rd-\d+)$/i.test(value)
+}
+
 /** Read actual launch metadata. Folder/display names are deliberately not an input. */
 export function resolveInstanceMetadata(json: VersionJson, readParent: (id: string) => VersionJson | undefined): {
   mcVersion: string; loader?: LoaderName; loaderVersion?: string; broken: boolean
@@ -36,8 +41,8 @@ export function resolveInstanceMetadata(json: VersionJson, readParent: (id: stri
   const forge = lib('net.minecraftforge', 'forge') ?? lib('net.minecraftforge', 'fmlloader')
   const base = chain.at(-1)!
   // Mojang's id in a vanilla profile is metadata; an opaque flattened modpack id is not an MC version.
-  const vanillaId = !base.inheritsFrom && (!loader || chain.length > 1) ? base.id : undefined
-  const mcVersion = arg('--fml.mcVersion') ?? chain.find(j => j.clientVersion)?.clientVersion ?? lib('net.fabricmc', 'intermediary') ?? lib('org.quiltmc', 'hashed') ?? forge?.split('-')[0] ?? chain.find(j => j._mcVersion)?._mcVersion ?? vanillaId ?? '未知'
+  const vanillaId = !base.inheritsFrom && (!loader || chain.length > 1) && isMinecraftVersionId(base.id) ? base.id : undefined
+  const mcVersion = [arg('--fml.mcVersion'), ...chain.map(j => j.clientVersion), lib('net.fabricmc', 'intermediary'), lib('org.quiltmc', 'hashed'), forge?.split('-')[0], ...chain.map(j => j._mcVersion), vanillaId].find(isMinecraftVersionId) ?? '未知'
   const rawLoader = (loader === 'neoforge' ? arg('--fml.neoForgeVersion') ?? lib('net.neoforged', 'neoforge') : loader === 'forge' ? arg('--fml.forgeVersion') ?? forge : loader === 'fabric' ? lib('net.fabricmc', 'fabric-loader') : loader === 'quilt' ? lib('org.quiltmc', 'quilt-loader') : undefined) ?? chain.find(j => j._loaderVersion)?._loaderVersion
   return { mcVersion, loader, loaderVersion: rawLoader ? normalizeLoaderVersion(rawLoader, loader, mcVersion) : undefined, broken }
 }

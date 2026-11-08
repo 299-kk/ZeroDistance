@@ -1,13 +1,13 @@
 {
   "name": "zero-distance",
   "productName": "ZeroDistance",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "ZeroDistance · Minecraft Java 启动器",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "test": "tsx --test tests/default-game-folder.test.ts tests/mrpack.test.ts tests/mod-compatibility.test.ts tests/mod-workflow.test.ts tests/frp-manager.test.ts tests/frp-worker.test.ts tests/instance-isolation.test.ts tests/microsoft-tls.test.ts tests/gallery-zero-distance.test.ts tests/library-012.test.ts tests/skin3d-parity.test.ts tests/skin-editor-118.test.ts tests/skin-palette-preferences.test.ts tests/fallback-skin-1066.test.ts tests/consent.test.ts tests/zero-020.test.ts tests/lan-authentication.test.ts tests/memory-policy.test.ts tests/native-update-policy.test.ts",
+    "test": "tsx --test tests/default-game-folder.test.ts tests/mrpack.test.ts tests/mod-compatibility.test.ts tests/mod-workflow.test.ts tests/frp-manager.test.ts tests/frp-worker.test.ts tests/instance-isolation.test.ts tests/microsoft-tls.test.ts tests/gallery-zero-distance.test.ts tests/library-012.test.ts tests/skin3d-parity.test.ts tests/skin-editor-118.test.ts tests/skin-palette-preferences.test.ts tests/fallback-skin-1066.test.ts tests/consent.test.ts tests/zero-020.test.ts tests/lan-authentication.test.ts tests/memory-policy.test.ts tests/native-update-policy.test.ts tests/download-resilience-0307.test.ts tests/directory-move-0307.test.ts tests/deletion-frp-1082.test.ts tests/version-scan-0307.test.ts tests/legacy-forge-java.test.ts tests/java-sources.test.ts",
     "start": "electron-vite preview",
     "dist": "npm run dist:win",
     "dist:win": "npm run build && electron-builder --win nsis --x64 --publish never --config.electronDist=node_modules/electron/dist && node scripts/pack-unpacked-zip.cjs && node scripts/check-windows-deliverables.cjs",
@@ -156,7 +156,8 @@
     "adm-zip": "0.6.1",
     "koffi": "^3.2.1",
     "undici": "6.29.1",
-    "ws": "8.22.0"
+    "ws": "8.22.0",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",
@@ -178,7 +179,6 @@
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
     "vue": "^3.5.13",
-    "yauzl": "^3.4.0",
     "yazl": "^3.3.1"
   },
   "license": "SEE LICENSE IN LICENSE",

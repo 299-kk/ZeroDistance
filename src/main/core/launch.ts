@@ -517,8 +517,11 @@ async function launchOwned(
       emit({ stage: 'java', progress: 0, text: '检查 Java 环境' })
       let javaPath: string
       const versionJava = instanceConfig._javaPath
+      const javaAuto = instanceConfig._javaAuto === true || (!versionJava && (settings.javaAuto || !settings.javaPath))
+      if (javaAuto) emit({ stage: 'java', progress: 0, text: '识别整合包 Java 要求' })
+      const neededMajor = javaAuto ? await (await import('./modpackJava')).modpackJavaMajor(effectiveGameDir, requiredMajor(merged)) : requiredMajor(merged)
       if (instanceConfig._javaAuto === true) {
-        javaPath = await ensureJava(merged, emit)
+        javaPath = await ensureJava(merged, emit, neededMajor)
       } else if (versionJava) {
         if (!fs.existsSync(versionJava)) {
           throw new Error(`该版本指定的 Java 不存在（${versionJava}），请在版本设置中重新选择`)
@@ -526,7 +529,7 @@ async function launchOwned(
         javaPath = versionJava
         emit({ stage: 'java', progress: 1, text: '使用该版本指定的 Java' })
       } else if (settings.javaAuto) {
-        javaPath = await ensureJava(merged, emit)
+        javaPath = await ensureJava(merged, emit, neededMajor)
       } else if (settings.javaPath) {
         if (!fs.existsSync(settings.javaPath)) {
           throw new Error('手动指定的 Java 路径不存在，请在设置中重新选择')
@@ -534,8 +537,9 @@ async function launchOwned(
         javaPath = settings.javaPath
         emit({ stage: 'java', progress: 1, text: '使用手动指定的 Java' })
       } else {
-        const need = requiredMajor(merged)
-        const found = await selectHealthyJava(await scanJavaForLaunch(), need, macJavaArchitecture(merged))
+        const need = neededMajor
+        let found = await selectHealthyJava(await scanJavaForLaunch(), need, macJavaArchitecture(merged), true)
+        if (!found) found = await selectHealthyJava(await scanJavaForLaunch(true), need, macJavaArchitecture(merged), true)
         if (!found) {
           throw new Error(
             `该版本需要 Java ${need} (64位)，但未找到（Java 自动管理已关闭）。请在设置中选择 Java 或开启自动管理`

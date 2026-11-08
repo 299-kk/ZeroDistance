@@ -1216,8 +1216,9 @@ export interface ModInfo {
   /** 前置依赖 mod id 列表 */
   dependencies: string[]
   requirements?: ModRequirement[]
+  incompatibilities?: ModRequirement[]
   /** Multi-loader jars may contain several independent metadata descriptors. */
-  variants?: Array<{ loader: LoaderName; mcRange: string; loaderRange?: string; requirements?: ModRequirement[] }>
+  variants?: Array<{ loader: LoaderName; mcRange: string; loaderRange?: string; requirements?: ModRequirement[]; incompatibilities?: ModRequirement[] }>
   provides?: Array<{ id: string; version: string }>
   /** 图标 dataURL（jar 内嵌图标） */
   iconDataUrl?: string

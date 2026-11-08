@@ -30,6 +30,17 @@ export function missingNeoRuntime(json: VersionJson, shared: string): string[] {
   })
 }
 
+/** Forge 1.13–1.16 discovers generated sibling jars by coordinates rather than the classpath. */
+export function forgeRuntimePaths(json: VersionJson): string[] {
+  const mc = fmlArgument(json, '--fml.mcVersion'), forge = fmlArgument(json, '--fml.forgeVersion'), mcp = fmlArgument(json, '--fml.mcpVersion')
+  if (!mc || !forge || !mcp || !/^1\.(?:13|14|15|16)(?:\.|$)/.test(mc)) return []
+  const version = `${mc}-${forge}`, mapped = `${mc}-${mcp}`
+  return [
+    ...['universal', 'client'].map(c => `net/minecraftforge/forge/${version}/forge-${version}-${c}.jar`),
+    ...['extra', 'srg', 'slim'].map(c => `net/minecraft/client/${mapped}/client-${mapped}-${c}.jar`)
+  ]
+}
+
 /** External launchers may omit FML's dynamically loaded sibling artifacts from
  * libraries. Reuse only matching runtime coordinates, never any instance data. */
 export function reuseExternalRuntimeLibraries(json: VersionJson, roots: string[], shared: string, destinations: string[]): number {
@@ -39,6 +50,7 @@ export function reuseExternalRuntimeLibraries(json: VersionJson, roots: string[]
     if (p && p.length >= 3 && p.every(s => /^[a-zA-Z0-9_.+-]+$/.test(s))) relative.add(`${p[0].replace(/\./g, '/')}/${p[1]}/${p[2]}/${p[1]}-${p[2]}${p[3] ? '-' + p[3] : ''}.jar`)
   }
   neoRuntimePaths(json).forEach(rel => relative.add(rel))
+  forgeRuntimePaths(json).forEach(rel => relative.add(rel))
   const mc = fmlArgument(json, '--fml.mcVersion'), form = fmlArgument(json, '--fml.neoFormVersion')
   if (mc && form) for (const suffix of ['srg', 'extra', 'slim']) relative.add(`net/minecraft/client/${mc}-${form}/client-${mc}-${form}-${suffix}.jar`)
   const fml = json.libraries?.map(l => l.name?.split(':')).find(parts => parts?.[0] === 'net.minecraftforge' && parts[1] === 'fmlloader')

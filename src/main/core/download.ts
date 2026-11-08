@@ -15,11 +15,22 @@ import { DownloadSourcePool } from './downloadSources'
 
 export type MirrorPref = 'official' | 'bmclapi'
 export type ProgressFn = (done: number, total: number, networkBytes?: number) => void
-export interface DownloadBatchProgress extends DownloadProgressSnapshot { activeFiles?: string[]; speedBps: number; etaSeconds: number | null; paused: boolean }
+export interface DownloadBatchProgress extends DownloadProgressSnapshot { activeFiles?: string[]; retryingFiles?: number; speedBps: number; etaSeconds: number | null; paused: boolean }
 export type AllProgressFn = (done: number, total: number, speedBps: number, detail: DownloadBatchProgress) => void
 export interface DownloadTask { label?: string; url: string; urls?: string[]; dest: string; sha1?: string; sha512?: string; sha256?: string; size?: number; reuseDirs?: string[]; reuseFiles?: string[] }
 interface Integrity { sha1?: string; sha512?: string; sha256?: string; size?: number; systemProxy?: boolean }
 export const BMCL_MAVEN_ROOT = 'https://bmclapi2.bangbang93.com/maven/'
+/** Modrinth file CDN hosts. China is routed to a separate Fastly endpoint, so the
+ * two hosts are independent fallbacks for the same immutable object. */
+export const MODRINTH_CDN_HOSTS = ['cdn.modrinth.com', 'cdn-raw.modrinth.com', 'cdn-alt.modrinth.com'] as const
+/** CurseForge immutable file CDN hosts. */
+export const CF_CDN_HOSTS = ['edge.forgecdn.net', 'mediafilez.forgecdn.net'] as const
+export function isModrinthFileUrl(input: URL): boolean {
+  return input.protocol === 'https:' && (MODRINTH_CDN_HOSTS as readonly string[]).includes(input.hostname) && /^\/data\/[^/]+\/versions\//.test(input.pathname)
+}
+export function isCurseForgeFileUrl(input: URL): boolean {
+  return input.protocol === 'https:' && (CF_CDN_HOSTS as readonly string[]).includes(input.hostname) && /^\/files\/\d+\/\d+\//.test(input.pathname)
+}
 export function mirrorUrl(input: string, mirror: MirrorPref): string {
   if (mirror === 'official') return input
   try {
@@ -31,7 +42,9 @@ export function mirrorUrl(input: string, mirror: MirrorPref): string {
     if (['libraries.minecraft.net','maven.fabricmc.net','maven.minecraftforge.net'].includes(h)) return BMCL_MAVEN_ROOT + p.slice(1) + q
     if (h === 'maven.neoforged.net' && p.startsWith('/releases/')) return BMCL_MAVEN_ROOT + p.slice(10) + q
     if (h === 'files.minecraftforge.net' && p.startsWith('/maven/')) return base + p + q
-    if ((h === 'cdn.modrinth.com' && /^\/data\/[^/]+\/versions\//.test(p)) || (['edge.forgecdn.net','mediafilez.forgecdn.net'].includes(h) && /^\/files\/\d+\/\d+\//.test(p))) return 'https://mod.mcimirror.top' + p + q
+    // MCIM serves cached mods from domestic object storage (301 to an OpenMCIM
+    // node) and redirects uncached files back to the official CDN (302).
+    if (isModrinthFileUrl(u) || isCurseForgeFileUrl(u)) return 'https://mod.mcimirror.top' + p + q
   } catch { /* Non-URL inputs retain their original validation error. */ }
   return input
 }
@@ -40,10 +53,16 @@ export function downloadCandidates(urls: string[], mirror: MirrorPref): string[]
     const variants = [url]
     try {
       const u = new URL(url)
-      if (u.protocol === 'https:' && ['edge.forgecdn.net', 'mediafilez.forgecdn.net'].includes(u.hostname) && /^\/files\/\d+\/\d+\//.test(u.pathname)) {
+      if (isCurseForgeFileUrl(u)) {
         // Same immutable CDN object, independent of the edge redirect cache.
         u.hostname = 'mediafilez.forgecdn.net'; variants.unshift(u.href)
         u.hostname = 'edge.forgecdn.net'; variants.push(u.href)
+      } else if (isModrinthFileUrl(u)) {
+        // Modrinth sends mainland connections to cdn-alt, which can be
+        // unresolvable; keep the other official host as an exact fallback.
+        const host = u.hostname
+        if (host !== 'cdn.modrinth.com') { u.hostname = 'cdn.modrinth.com'; variants.push(u.href); u.hostname = host }
+        if (host !== 'cdn-raw.modrinth.com') { u.hostname = 'cdn-raw.modrinth.com'; variants.push(u.href); u.hostname = host }
       }
     } catch { /* Keep URL validation in the transfer. */ }
     return [...(mirror === 'official' ? [] : [mirrorUrl(url, mirror)]), ...variants]
@@ -412,9 +431,16 @@ export async function downloadFile(url: string, dest: string, progress?: Progres
       const supplied = downloadCandidates([url, ...alternatives], mirror)
       const candidates = (integrity.sourcePool?.order(supplied, expected.size) ?? supplied).sort((a,b) => Number(Math.max(failures.get(origin(a))?.until ?? 0, serverCooldowns.get(origin(a)) ?? 0) > Date.now()) - Number(Math.max(failures.get(origin(b))?.until ?? 0, serverCooldowns.get(origin(b)) ?? 0) > Date.now()))
       let lastError: unknown = new Error('没有下载地址')
-      for (let index = 0; index < candidates.length; index++) {
-        const source = candidates[index], fallback = index + 1 < candidates.length
-        for (let attempt = 0; attempt < attempts; attempt++) {
+      // Rounds over the whole source list. A transient drop on one mirror must
+      // not end the file: the next pass resumes from the verified partial data.
+      const unavailable = new Set<string>()
+      for (let round = 0; round < attempts; round++) {
+        let triedAny = false
+        for (let index = 0; index < candidates.length; index++) {
+          const source = candidates[index]
+          if (unavailable.has(source)) continue
+          triedAny = true
+          const fallback = candidates.slice(index + 1).some(candidate => !unavailable.has(candidate))
           try {
             const bytes = (expected.size ?? 0) >= 1024 * 1024 && downloadLimiter.maxConcurrent >= 2 && (sha1 || integrity.sha512 || integrity.sha256)
               ? await segmented(source, dest, expected, signal, progress, fallback, integrity.maxSegments, candidates.slice(index + 1), integrity.sourcePool)
@@ -427,14 +453,22 @@ export async function downloadFile(url: string, dest: string, progress?: Progres
             return
           } catch (error) {
             signal?.throwIfAborted(); lastError = error
-            if (error instanceof InvalidContent) { await fs.promises.rm(temporary, { force: true }); break }
-            if (error instanceof DownloadHttpError && classifyHttpStatus(error.status) !== 'transient') break
+            // Deterministic content/HTTP failures are retried only on another
+            // exact source; transient drops stay eligible for the next round.
+            if (error instanceof InvalidContent) {
+              unavailable.add(source)
+              await fs.promises.rm(temporary, { force: true })
+              continue
+            }
+            if (error instanceof DownloadHttpError && classifyHttpStatus(error.status) !== 'transient') {
+              unavailable.add(source)
+              continue
+            }
             noteHostFailure(source)
-            // Try a healthy alternative before repeating a failing connection.
-            if (fallback) break
-            if (attempt + 1 < attempts) await abortableDelay(100 * 2 ** attempt, signal)
           }
         }
+        if (!triedAny) break
+        if (round + 1 < attempts) await abortableDelay(Math.min(2_000, 150 * 2 ** round), signal)
       }
       const failure = lastError as Error & { downloadUrl?: string; cause?: { code?: string; message?: string } }
       let address = failure.downloadUrl || url
@@ -446,49 +480,74 @@ export async function downloadFile(url: string, dest: string, progress?: Progres
     }
   })
 }
-export async function downloadAll(tasks: DownloadTask[], progress?: AllProgressFn, concurrency = downloadLimiter.maxConcurrent, mirror: MirrorPref = 'official', signal?: AbortSignal): Promise<void> {
-  const tracker = new DownloadProgressTracker(), speed = new SmoothedSpeedEstimator(), active = new Map<number,string>()
+/** Disk/permission failures are not network retries. */
+export function retryableDownloadError(error: unknown): boolean {
+  const code = (error as { cause?: { code?: string } } | undefined)?.cause?.code
+  return !(code && /^(EACCES|EPERM|ENOSPC|EDQUOT|EROFS|EISDIR|ENOTDIR)$/.test(code))
+}
+export async function downloadAll(tasks: DownloadTask[], progress?: AllProgressFn, concurrency = downloadLimiter.maxConcurrent, mirror: MirrorPref = 'official', signal?: AbortSignal, retries = 2): Promise<void> {
+  const tracker = new DownloadProgressTracker(), speed = new SmoothedSpeedEstimator(), active = new Map<number,string>(), failedNow = new Set<number>()
   const sourcePool = new DownloadSourcePool()
-  // Most workers start large files early; reserve one in four for small files.
-  // Overlap per-file latency with bulk transfer instead of deferring thousands
-  // of small assets until 99% of bytes are already downloaded. No extra slots.
   const order = tasks.map((task, index) => ({ index, size: task.size ?? 0 })).sort((a, b) => b.size - a.size)
-  const workers = Math.min(tasks.length, Math.max(1, Math.floor(concurrency) || 1))
-  const mixed = workers >= 4 && order.some(task => task.size >= 1024 * 1024)
-  const large = mixed ? order.filter(task => task.size >= 1024 * 1024) : order
-  const small = mixed ? order.filter(task => task.size < 1024 * 1024).reverse() : []
-  let largeCursor = 0, smallCursor = 0
-  const take = (worker: number) => {
-    if (mixed && worker % 4 === 3 && smallCursor < small.length) return small[smallCursor++]
-    return largeCursor < large.length ? large[largeCursor++] : small[smallCursor++]
-  }
+  const passes = Math.max(1, Math.min(5, Math.floor(retries) + 1))
   tasks.forEach(task => tracker.add(task.size)); tracker.seal()
   const controller = new AbortController(), abort = () => controller.abort(signal?.reason)
   signal?.addEventListener('abort', abort, { once: true }); inheritTaskControl(signal, controller.signal)
-  let firstError: unknown, networkBytes = 0
+  let lastError: unknown, networkBytes = 0
   const report = () => {
     const snapshot = tracker.snapshot(), paused = isTaskPaused(signal)
     const sampled = speed.sample(networkBytes, snapshot.bytesTotal == null ? null : Math.max(0, snapshot.bytesTotal - snapshot.bytesDone), performance.now(), paused)
-    progress?.(snapshot.completedFiles, tasks.length, sampled.speedBps, { ...snapshot, ...sampled, paused, activeFiles: [...active.values()] })
+    progress?.(snapshot.completedFiles, tasks.length, sampled.speedBps, { ...snapshot, ...sampled, paused, activeFiles: [...active.values()], retryingFiles: failedNow.size })
   }
   report()
   const timer = setInterval(report, 250)
   try {
     signal?.throwIfAborted()
     if (!tasks.length) { progress?.(0,0,0,{completedFiles:0,totalFiles:0,bytesDone:0,bytesTotal:0,fraction:1,indeterminate:false,speedBps:0,etaSeconds:null,paused:false}); return }
-    await Promise.all(Array.from({ length: workers }, async (_, worker) => {
-      while (!controller.signal.aborted) {
-        const next = take(worker)
-        if (!next) return
-        const index = next.index, task = tasks[index]; active.set(index, task.label ?? path.basename(task.dest))
-        try {
-          await downloadFile(task.url, task.dest, (done,total,wire = 0) => { networkBytes += wire; tracker.record(index,done,total) }, task.sha1, mirror, controller.signal, task.urls, { sha512: task.sha512, sha256: task.sha256, size: task.size, reuseDirs: task.reuseDirs, reuseFiles: task.reuseFiles, sourcePool, maxSegments: () => Math.max(1, Math.floor(downloadLimiter.maxConcurrent / Math.max(1, active.size))) })
-          tracker.recordComplete(index, (await fs.promises.stat(task.dest)).size); active.delete(index)
-        } catch (error) { firstError ??= error; controller.abort(error); return }
+    let remaining = order
+    for (let pass = 0; pass < passes && remaining.length; pass++) {
+      if (pass > 0) {
+        // A dropped connection affects one file, not the whole pack. Wait for
+        // the network to settle and retry only the files that failed.
+        report()
+        await abortableDelay(Math.min(4_000, 600 * 2 ** (pass - 1)), signal)
       }
-    }))
+      const failed: typeof remaining = []
+      let largeCursor = 0, smallCursor = 0
+      // Most workers start large files early; reserve one in four for small files.
+      // Overlap per-file latency with bulk transfer instead of deferring thousands
+      // of small assets until 99% of bytes are already downloaded. No extra slots.
+      const workers = Math.min(remaining.length, Math.max(1, Math.floor(concurrency) || 1))
+      const mixed = workers >= 4 && remaining.some(task => task.size >= 1024 * 1024)
+      const large = mixed ? remaining.filter(task => task.size >= 1024 * 1024) : remaining
+      const small = mixed ? remaining.filter(task => task.size < 1024 * 1024).reverse() : []
+      const take = (worker: number) => {
+        if (mixed && worker % 4 === 3 && smallCursor < small.length) return small[smallCursor++]
+        return largeCursor < large.length ? large[largeCursor++] : small[smallCursor++]
+      }
+      await Promise.all(Array.from({ length: workers }, async (_, worker) => {
+        while (!controller.signal.aborted) {
+          const next = take(worker)
+          if (!next) return
+          const index = next.index, task = tasks[index]; active.set(index, task.label ?? path.basename(task.dest))
+          try {
+            await downloadFile(task.url, task.dest, (done,total,wire = 0) => { networkBytes += wire; tracker.record(index,done,total) }, task.sha1, mirror, controller.signal, task.urls, { sha512: task.sha512, sha256: task.sha256, size: task.size, reuseDirs: task.reuseDirs, reuseFiles: task.reuseFiles, sourcePool, maxSegments: () => Math.max(1, Math.floor(downloadLimiter.maxConcurrent / Math.max(1, active.size))) })
+            tracker.recordComplete(index, (await fs.promises.stat(task.dest)).size)
+            failedNow.delete(index); active.delete(index)
+          } catch (error) {
+            active.delete(index)
+            if (controller.signal.aborted) throw error
+            signal?.throwIfAborted()
+            lastError = error
+            if (!retryableDownloadError(error)) { controller.abort(error); throw error }
+            failedNow.add(index); failed.push(next)
+          }
+        }
+      }))
+      remaining = failed
+    }
     signal?.throwIfAborted()
-    if (firstError) throw firstError
+    if (remaining.length) throw lastError ?? new Error('下载失败：仍有文件未完成')
     report()
   } finally { clearInterval(timer); signal?.removeEventListener('abort', abort) }
 }

@@ -28,5 +28,11 @@ export async function downloadLoaderInstaller(url: string, dest: string, mirror:
       break
     }
   }
-  await downloadFile(url, dest, progress, sha1, mirror, signal, [], { size })
+  try {
+    await downloadFile(url, dest, progress, sha1, mirror, signal, [], { size })
+  } catch (error) {
+    signal?.throwIfAborted()
+    if (mirror === 'official') throw new Error(`${error instanceof Error ? error.message : String(error)}\n当前使用官方源；如连接超时，可在设置 → 下载 → 下载镜像中选择“国内镜像优先”后重试。`, { cause: error })
+    throw error
+  }
 }

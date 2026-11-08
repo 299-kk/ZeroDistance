@@ -38,6 +38,21 @@ test('Java providers reject mismatched CPU, major, untrusted URLs and absent int
   }
 })
 
+test('Azul 列表混入 32 位时继续查找并严格验证 64 位包', async () => {
+  const ids = ['00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002']
+  const candidates = ids.map(package_uuid => ({ package_uuid, java_version: [8, 0, 512], availability_type: 'CA' }))
+  const metadata = { ...detail, java_version: [8, 0, 512], os: 'windows', archive_type: 'zip', download_url: 'https://cdn.azul.com/zulu/bin/runtime.zip' }
+  const calls: string[] = []
+  const pkg = await zuluPackage({ major: 8, os: 'windows', arch: 'x64' }, async url => {
+    calls.push(url)
+    if (url.includes('packages/?')) return candidates
+    return { ...metadata, hw_bitness: url.endsWith(ids[0]) ? 32 : 64 }
+  })
+  assert.equal(calls.length, 3)
+  assert.equal(pkg.sha256, metadata.sha256_hash)
+  assert.equal(pkg.url, metadata.download_url)
+})
+
 test('cancelled Java provisioning never switches sources or publishes a runtime', async () => {
   const controller = new AbortController(); let calls = 0
   await assert.rejects(provisionJava(target, async url => {

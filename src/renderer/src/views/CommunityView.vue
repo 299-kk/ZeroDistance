@@ -194,9 +194,9 @@ onMounted(() => void loadManifest())
 const query = reactive({
   keyword: '',
   kind: store.communityKind as CommunityKind,
-  source: 'modrinth' as 'all' | CommunitySource,
-  mcVersion: currentInstance.value?.mcVersion === '未知' ? '' : currentInstance.value?.mcVersion ?? '',
-  loader: currentInstance.value?.loader ?? '' as '' | LoaderName,
+  source: 'all' as 'all' | CommunitySource,
+  mcVersion: '',
+  loader: '' as '' | LoaderName,
   sort: 'relevance' as 'relevance' | 'downloads' | 'newest'
 })
 // query 必须先初始化。过早运行 getter 会抛错，导致监听未订阅分类变化。
@@ -328,9 +328,14 @@ function onFilterChange() {
   if (communityTab.value === 'browse') void doSearch(true)
 }
 
+function changeKind(kind: CommunityKind) {
+  query.kind = kind
+  if (kind === 'modpack') { query.source = 'all'; query.mcVersion = ''; query.loader = ''; versionInput.value = '' }
+  onFilterChange()
+}
+
 function onReset() {
   query.keyword = ''
-  query.kind = 'mod'
   query.source = 'all'
   query.mcVersion = ''
   query.loader = ''
@@ -463,9 +468,7 @@ async function openDownload(item: CommunityProjectReference, kind: CommunityKind
     if (scanned.errors.length) toast('部分目录扫描失败：' + scanned.errors.join('；'), 'error')
     await loadFiles()
   } catch (e) {
-    if (generation === openGeneration) modal.filesError = '获取文件列表失败：' + errText(e)
-  } finally {
-    if (generation === openGeneration) modal.loadingFiles = false
+    if (generation === openGeneration && modal.open) { modal.filesError = '获取文件列表失败：' + errText(e); modal.loadingFiles = false }
   }
 }
 
@@ -474,7 +477,7 @@ const canConfirm = computed(
     !!selectedFile.value &&
     !modal.loadingFiles &&
     !modal.downloading &&
-    (isModpack.value || !!modal.versionId)
+    (isModpack.value || targetOptions.value.some(v => instanceKey(v) === modal.versionId))
 )
 
 async function confirmDownload() {
@@ -507,6 +510,33 @@ async function confirmDownload() {
   }
 }
 function selectDownloadInstance() { const target = targetOptions.value.find(v => instanceKey(v) === modal.versionId); if (target) void selectInstance(target.id, target.folder) }
+const installListOpen = ref(false)
+function addToInstallList() {
+  const file = selectedFile.value, target = targetOptions.value.find(v => instanceKey(v) === modal.versionId)
+  if (!file || !target || !modal.item) { toast('请选择兼容的模组文件和游戏版本', 'error'); return }
+  const list = store.modInstallList
+  if (list && instanceKey(list.target) !== instanceKey(target)) { toast('清单已绑定其他游戏版本，请先安装或清空清单', 'error'); return }
+  const current = list ?? { target, entries: [] }
+  const index = current.entries.findIndex(e => e.file.source === file.source && e.file.projectId === file.projectId)
+  const entry = { title: modal.item.title, file }
+  if (index >= 0) current.entries.splice(index, 1, entry)
+  else if (current.entries.length >= 64) { toast('安装清单最多支持 64 个模组', 'error'); return }
+  else current.entries.push(entry)
+  store.modInstallList = current
+  modal.open = false
+  toast('已加入安装清单', 'success')
+}
+function removeListEntry(index: number) {
+  store.modInstallList?.entries.splice(index, 1)
+  if (!store.modInstallList?.entries.length) store.modInstallList = null
+}
+function checkInstallList() {
+  const list = store.modInstallList
+  if (!list?.entries.length) return
+  if (store.modInstallRequest) { toast('请先完成当前模组安装任务', 'info'); return }
+  store.modInstallRequest = { target: list.target, input: { files: list.entries.map(e => e.file) }, fromList: true }
+  installListOpen.value = false
+}
 
 </script>
 
@@ -527,6 +557,7 @@ function selectDownloadInstance() { const target = targetOptions.value.find(v =>
       </div>
     <CommunityFavorites v-if="communityTab === 'favorites'" :keyword="favoriteSearch" @download="openDownload($event, 'mod')" @details="detailProject = $event" @browse="communityTab = 'browse'; query.kind = 'mod'; onFilterChange()" />
     <template v-else>
+    <div v-if="query.kind === 'mod' || store.modInstallList" class="install-list-bar"><span>安装清单 <strong>{{ store.modInstallList?.entries.length ?? 0 }}</strong><small v-if="store.modInstallList"> · {{ store.modInstallList.target.id }}</small></span><button class="btn btn-ghost btn-sm" @click="installListOpen = true">查看清单</button></div>
     <!-- 搜索卡片 -->
     <div data-ui="CommunityView:5551ade589f2" class="card search-card">
       <div data-ui="CommunityView:cc7ad8d814fc" class="kind-capsules" ref="kindCapsules">
@@ -537,7 +568,7 @@ function selectDownloadInstance() { const target = targetOptions.value.find(v =>
           class="capsule"
           :data-kind="t.value"
           :class="{ active: query.kind === t.value }"
-          @click="query.kind = t.value; onFilterChange()"
+          @click="changeKind(t.value)"
         >
           {{ t.label }}
         </button>
@@ -757,6 +788,7 @@ function selectDownloadInstance() { const target = targetOptions.value.find(v =>
           <div data-ui="CommunityView:2356b94bbc0d" class="modal-actions">
             <span v-if="selectedFile" class="resource-download-size">文件大小 <strong>{{ fmtSize(selectedFile.size) }}</strong><small v-if="modal.kind === 'modpack'">整合包清单大小，安装时另下载游戏与模组</small><small v-else-if="modal.kind === 'mod'">前置依赖另计</small></span>
             <button data-ui="CommunityView:989d28842ec5" class="btn btn-ghost" :disabled="modal.downloading" @click="modal.open = false">取消</button>
+            <button v-if="modal.kind === 'mod'" class="btn btn-ghost" :disabled="!canConfirm" @click="addToInstallList">加入安装清单</button>
             <button data-ui="CommunityView:cade5c4fc83a" class="btn btn-gold" :disabled="!canConfirm" @click="confirmDownload">
               <span data-ui="CommunityView:d3c64175bb8e" v-if="modal.downloading" class="spin"></span>
               {{ modal.downloading ? '下载中…' : '确认下载' }}
@@ -765,11 +797,13 @@ function selectDownloadInstance() { const target = targetOptions.value.find(v =>
         </div>
       </div>
     </Teleport>
+    <Teleport to="body"><div v-if="installListOpen" class="modal-mask" @pointerdown.self="installListOpen = false"><section class="modal install-list-modal" role="dialog" aria-modal="true" aria-label="安装清单"><h3 class="modal-title">安装清单</h3><p class="muted">{{ store.modInstallList ? `安装到 ${store.modInstallList.target.id} · ${store.modInstallList.target.mcVersion} / ${store.modInstallList.target.loader}` : '选择模组文件后，点击“加入安装清单”。' }}</p><div v-for="(entry, index) in store.modInstallList?.entries ?? []" :key="entry.file.source + ':' + entry.file.fileId" class="install-list-row"><div><strong>{{ entry.title }}</strong><small>{{ entry.file.fileName }}</small></div><button class="btn btn-ghost btn-sm" :aria-label="`移除 ${entry.title}`" @click="removeListEntry(index)">移除</button></div><p v-if="store.modInstallList" class="muted">检查时会下载模组和必要前置，核对已声明的依赖、版本和冲突。</p><div class="modal-actions"><button class="btn btn-ghost" @click="installListOpen = false">关闭</button><button v-if="store.modInstallList" class="btn btn-ghost" @click="store.modInstallList = null">清空</button><button class="btn btn-gold" :disabled="!store.modInstallList?.entries.length" @click="checkInstallList">检查并安装</button></div></section></div></Teleport>
     <CommunityModDetails v-if="detailProject" :reference="detailProject" @close="detailProject = null" @download="detailProject = null; openDownload($event, 'mod')" />
   </div>
 </template>
 
 <style scoped>
+.install-list-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md)}.install-list-bar small,.install-list-row small{color:var(--text-dim)}.install-list-modal{width:min(640px,calc(100vw - 40px));max-height:85vh;overflow-y:auto}.install-list-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}.install-list-row div{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
 .community-sections { display:flex;align-items:center;gap:6px;padding:4px;background:var(--card-2);border:1px solid var(--border);border-radius:var(--radius-md);align-self:flex-start; }
 .community-section { display:flex;align-items:center;justify-content:center;gap:8px;min-height:36px;border:0;border-radius:var(--radius-sm);padding:0 16px;background:transparent;color:var(--text-dim);font:inherit;font-size:13px;cursor:pointer;transition:background 160ms,color 160ms; }
 .community-section.active { background:var(--accent-soft);color:var(--accent-2);font-weight:600; }

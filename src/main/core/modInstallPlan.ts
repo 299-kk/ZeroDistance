@@ -8,6 +8,7 @@ import { matchesVersionRange, modMatchesInstance, normalizeLoader } from '../../
 import { parseModFile } from './modinfo'
 import { communityExactFile, communityFiles, communitySearch } from './community'
 import { downloadAll } from './download'
+import type { MirrorPref } from './download'
 
 export interface DependencyRepository {
   files(source: CommunitySource, projectId: string, target: InstalledVersion): Promise<CommunityFile[]>
@@ -71,28 +72,51 @@ export async function dependencyGraph(roots: CommunityFile[], target: InstalledV
 }
 
 interface PrivatePlan {
-  view: ModInstallPlan; directory: string; roots: string[]; downloads: CommunityFile[]; expires: number
+  view: ModInstallPlan; directory: string; roots: string[]; downloads: CommunityFile[]; stagedDependencies: string[]; expires: number
 }
 const plans = new Map<string, PrivatePlan>()
 const hash = (file: string) => crypto.createHash('sha1').update(fs.readFileSync(file)).digest('hex')
 const clean = (plan: PrivatePlan) => { fs.rmSync(plan.directory, { recursive: true, force: true }); plans.delete(plan.view.id) }
 
-export async function prepareModInstall(target: InstalledVersion, input: { paths?: string[]; file?: CommunityFile }, emit: (e: ProgressEvent) => void, signal?: AbortSignal, repository = dependencyRepository): Promise<ModInstallPlan> {
+export function modConflicts(staged: ModInfo[], installed: ModInfo[], target: InstalledVersion): string[] {
+  const all = [...installed, ...staged], conflicts = new Set<string>()
+  for (const mod of staged) {
+    for (const other of all) {
+      if (mod === other) continue
+      if (mod.id && mod.id === other.id && hash(mod.filePath) !== hash(other.filePath)) conflicts.add(`${mod.name || mod.id} 与 ${other.name || other.id} 的模组 ID 重复`)
+      if (mod.fileName.toLowerCase() === other.fileName.toLowerCase() && hash(mod.filePath) !== hash(other.filePath)) conflicts.add(`${mod.fileName} 与现有或清单中的文件同名`)
+    }
+  }
+  for (const mod of all) {
+    const declared = mod.variants?.filter(v => normalizeLoader(v.loader) === normalizeLoader(target.loader)).flatMap(v => v.incompatibilities ?? []) ?? mod.incompatibilities ?? []
+    for (const dep of declared) for (const other of all) {
+      if (mod === other || (!staged.includes(mod) && !staged.includes(other))) continue
+      if (provided(other).some(p => p.id === dep.id && matchesVersionRange(dep.range, p.version))) conflicts.add(`${mod.name || mod.id} 与 ${other.name || other.id} 不兼容（${dep.id} ${dep.range}）`)
+    }
+  }
+  return [...conflicts]
+}
+
+export async function prepareModInstall(target: InstalledVersion, input: { paths?: string[]; file?: CommunityFile; files?: CommunityFile[] }, emit: (e: ProgressEvent) => void, signal?: AbortSignal, repository = dependencyRepository, mirror: MirrorPref = 'official'): Promise<ModInstallPlan> {
   for (const p of plans.values()) if (p.expires < Date.now()) clean(p)
   if (plans.size >= 8) throw new Error('待确认安装过多，请取消已有安装计划')
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kamucl-mod-plan-'))
   const id = crypto.randomUUID()
-  const plan: PrivatePlan = { directory, roots: [], downloads: [], expires: Date.now() + 20 * 60_000, view: { id, target, files: [], missing: [], warnings: [] } }
+  const plan: PrivatePlan = { directory, roots: [], downloads: [], stagedDependencies: [], expires: Date.now() + 20 * 60_000, view: { id, target, files: [], missing: [], warnings: [] } }
   try {
     const roots: CommunityFile[] = []
-    if (input.file) {
-      if (!input.file.source || !input.file.projectId) throw new Error('缺少项目来源，请重新打开下载页')
-      const file = await repository.exact(input.file.source, input.file.projectId, input.file.fileId)
+    const selectedFiles = [...(input.files ?? []), ...(input.file ? [input.file] : [])]
+    if (selectedFiles.length > 64) throw new Error('安装清单最多支持 64 个模组')
+    if (selectedFiles.length) {
+      for (const [index, selected] of selectedFiles.entries()) {
+      if (!selected.source || !selected.projectId) throw new Error('缺少项目来源，请重新打开下载页')
+      const file = await repository.exact(selected.source, selected.projectId, selected.fileId)
       if (!communityFileMatchesInstance(file, target)) throw new Error('所选 MOD 文件与目标实例不兼容')
-      const dest = path.join(directory, path.basename(file.fileName))
+      const dest = path.join(directory, 'root-'+index, path.basename(file.fileName))
       emit({ stage: 'download', progress: 0, text: '读取所选 MOD，解析内置前置要求…' })
-      await downloadAll([{ url:file.url, dest, sha1:file.sha1, size:file.size || undefined }], (_d,_t,speed,detail) => emit({stage:'download', progress:detail.fraction ?? 0, text:'下载所选 MOD', speed, bytesDone:detail.bytesDone, bytesTotal:detail.bytesTotal ?? undefined, etaSeconds:detail.etaSeconds ?? undefined}), 8, 'official', signal)
+      await downloadAll([{ url:file.url, dest, sha1:file.sha1, size:file.size || undefined }], (_d,_t,speed,detail) => emit({stage:'download', progress:detail.fraction ?? 0, text:`检查所选 MOD ${index+1}/${selectedFiles.length}`, speed, bytesDone:detail.bytesDone, bytesTotal:detail.bytesTotal ?? undefined, etaSeconds:detail.etaSeconds ?? undefined}), 8, mirror, signal)
       plan.roots.push(dest); roots.push(file)
+      }
     } else {
       for (const [index, file] of (input.paths ?? []).entries()) {
         const destDir = path.join(directory, String(index)); fs.mkdirSync(destDir)
@@ -116,6 +140,14 @@ export async function prepareModInstall(target: InstalledVersion, input: { paths
     }
     plan.downloads = [...new Map(plan.downloads.map(f => [`${f.source}:${f.fileId}`, f])).values()]
       .filter(f => !f.sha1 || !installed.some(m => hash(m.filePath) === f.sha1))
+    const dependencies = plan.downloads.map((file,index) => ({ ...file, dest:path.join(directory, 'dep-'+index, path.basename(file.fileName)) }))
+    await downloadAll(dependencies.map(f => ({url:f.url,dest:f.dest,sha1:f.sha1,size:f.size || undefined})), (_d,_t,speed,detail) => emit({stage:'download',progress:detail.fraction ?? 0,text:'检查必要前置',speed,bytesDone:detail.bytesDone,bytesTotal:detail.bytesTotal ?? undefined,etaSeconds:detail.etaSeconds ?? undefined}), 8, mirror, signal)
+    plan.stagedDependencies = dependencies.map(f => f.dest)
+    const checked = dependencies.map(f => parseModFile(f.dest))
+    for (const mod of checked) if (!modMatchesInstance(mod, target)) throw new Error(`${mod.fileName}：${mod.error || '与目标实例不兼容'}`)
+    const unresolved = missingRequirements([...mods, ...checked], target, [...installed, ...mods, ...checked])
+    if (unresolved.length) plan.view.warnings.push(`仍缺少或版本不满足：${unresolved.map(d => `${d.id} ${d.range}`).join('、')}`)
+    plan.view.warnings.push(...modConflicts([...mods, ...checked], installed, target))
     plan.view.missing = missing.map(d => `${d.id} ${d.range}`)
     plan.view.files = [...mods.map(m => ({ name: m.name, version: m.version, dependency: false, fileName: m.fileName })),
       ...plan.downloads.map(f => ({ name: f.projectId ?? f.fileName, version: f.version, dependency: true, fileName: f.fileName }))]
@@ -137,12 +169,11 @@ export async function executeModPlan(id: string, includeDependencies: boolean, r
     let installed = installedMods(target)
     const rootMods = plan.roots.map(parseModFile)
     const staged = [...rootMods]
-    const dependencies = includeDependencies ? plan.downloads.map((file,index) => ({ ...file, dest:path.join(plan.directory, 'dep-'+index, path.basename(file.fileName)) })) : []
-    await downloadAll(dependencies.map(f => ({url:f.url,dest:f.dest,sha1:f.sha1,size:f.size || undefined})), (_d,_t,speed,detail) => emit({stage:'download',progress:detail.fraction ?? 0,text:'下载必要前置',speed,bytesDone:detail.bytesDone,bytesTotal:detail.bytesTotal ?? undefined,etaSeconds:detail.etaSeconds ?? undefined}), 8, 'official', signal)
+    const dependencies = includeDependencies ? plan.stagedDependencies : []
     for (const file of dependencies) {
       signal?.throwIfAborted()
-      const mod = parseModFile(file.dest)
-      if (!modMatchesInstance(mod, target)) throw new Error(`${file.fileName} 的 JAR 元数据不兼容目标实例：${mod.error ?? ''}`)
+      const mod = parseModFile(file)
+      if (!modMatchesInstance(mod, target)) throw new Error(`${mod.fileName} 的 JAR 元数据不兼容目标实例：${mod.error ?? ''}`)
       // Keep an installed compatible provider; never install a second copy by filename.
       if (!installed.some(m => provided(m).some(p => p.id === mod.id))) staged.push(mod)
     }
@@ -150,6 +181,8 @@ export async function executeModPlan(id: string, includeDependencies: boolean, r
     if (current.gameDirectory !== target.gameDirectory) throw new Error('下载期间实例目录发生变化，未安装任何 MOD')
     installed = installedMods(current)
     for (const mod of staged) if (!modMatchesInstance(mod, current)) throw new Error(`${mod.name} 的兼容性已变化，请重新解析`)
+    const conflicts = modConflicts(staged, installed, current)
+    if (conflicts.length) throw new Error(`检测到模组冲突，未写入任何 MOD：${conflicts.join('；')}`)
     const missing = missingRequirements(staged, target, [...staged, ...installed])
     if (missing.length) throw new Error(`未写入任何 MOD；仍缺少或版本不满足：${missing.map(d => `${d.id} ${d.range}`).join('、')}。请补齐前置或处理旧版冲突后重试`)
     const accepted: ModInfo[] = []

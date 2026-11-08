@@ -1257,10 +1257,19 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onEditKeydown)
   offs.forEach((off) => off())
 })
+function finishModInstall() {
+  const request = store.modInstallRequest, list = store.modInstallList
+  if (request?.fromList && list) {
+    const installed = new Set((request.input.files ?? []).map(f => `${f.source}:${f.projectId}:${f.fileId}`))
+    list.entries = list.entries.filter(e => !installed.has(`${e.file.source}:${e.file.projectId}:${e.file.fileId}`))
+    if (!list.entries.length) store.modInstallList = null
+  }
+  store.modInstallRequest = null
+}
 </script>
 
 <template>
-  <ModInstallDialog v-if="store.modInstallRequest" :target="store.modInstallRequest.target" :input="store.modInstallRequest.input" @close="store.modInstallRequest = null" @installed="store.modInstallRequest = null" />
+  <ModInstallDialog v-if="store.modInstallRequest" :target="store.modInstallRequest.target" :input="store.modInstallRequest.input" @close="store.modInstallRequest = null" @installed="finishModInstall" />
   <SupplementalModsResult />
   <LaunchNotice />
   <InstanceCenter v-if="instanceCenter.target" :key="instanceCenter.target.folder+instanceCenter.target.id" />
