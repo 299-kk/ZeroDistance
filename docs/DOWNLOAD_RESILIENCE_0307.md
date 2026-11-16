@@ -44,7 +44,7 @@
 
 - 新增 `tests/download-resilience-0307.test.ts`：镜像/双 CDN 候选、`cdn-alt` 回退、连续 5 次 503 后整批重试成功、单文件失败不中断其他文件、磁盘错误不重试。
 - 下载相关回归 63 项通过，包含取消、暂停、限速、Range 回退、慢速切源、缓存复用和 CurseForge 认证跳转。
-- `npm test` 91 项通过；`tests/download-resilience-0307.test.ts` 已加入该发布检查列表。
+- `npm test` 110 项通过；`tests/download-resilience-0307.test.ts` 已加入该发布检查列表。
 - TypeScript 类型检查通过。
 - 聚合入口 `tests/all.test.ts` 仍包含指向本分支已移除的上游界面组件与吉祥物素材的旧测试，本版未把它作为发布门禁；发布门禁为 `npm test` 与下载定向回归。
 
