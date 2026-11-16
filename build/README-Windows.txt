@@ -1,5 +1,7 @@
 ZeroDistance 0.3.7 · Windows x64
 
+本文件用于旧 Electron 构建（npm run dist:win）；当前原生版本的说明见 native-launcher/README.txt。
+
 ZIP 版：先完整解压，再运行 ZeroDistance.exe。请保留其余文件和文件夹。
 安装版：运行 Setup.exe，按向导选择安装目录；通过开始菜单或桌面快捷方式启动。
 首次使用需阅读并同意使用声明，按钮显示满 3 秒后才能点击；不同意会退出。
