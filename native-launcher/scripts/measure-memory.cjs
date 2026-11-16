@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),net=require('node:net'),assert=require('node:assert/strict'),{spawn,execFileSync}=require('node:child_process')
-let pw;try{pw=require('playwright')}catch{pw=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'))}
+let pw;try{pw=require('playwright')}catch{console.error('Playwright dev tool is required for GUI checks. Install it first: npm install --no-save --package-lock=false playwright');process.exit(2)}
 const root=path.resolve(__dirname,'../..'),arg=k=>process.argv[process.argv.indexOf(k)+1],label=process.argv.includes('--label')?arg('--label'):'candidate',exe=path.resolve(process.argv.includes('--exe')?arg('--exe'):path.join(root,'native-launcher/out/ZeroDistance.exe')),qa=path.join(root,'.qa/memory-optimization',label+'-'+crypto.randomUUID()),data=path.join(qa,'profile'),delay=ms=>new Promise(r=>setTimeout(r,ms))
 async function until(fn,label){for(let i=0;i<300;i++){if(await fn())return;await delay(100)}throw Error('Timeout: '+label)}
 async function run(){

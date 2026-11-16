@@ -22,7 +22,7 @@ async function verify(){
   application=spawn(path.join(installed,'ZeroDistance.exe'),['--qa','--data-dir',profile,'--cdp-port',String(port)],{windowsHide:true,stdio:'ignore'})
   let connected=false;for(let i=0;i<300;i++){assert.equal(application.exitCode,null);try{connected=(await fetch('http://127.0.0.1:'+port+'/json/version')).ok}catch{}if(connected)break;await delay(100)}assert(connected)
   const busy=ps('Uninstall');assert.notEqual(busy.exitCode,0);assert(busy.state.registry.some(r=>r.uninstall));assert(fs.existsSync(path.join(installed,'ZeroDistance.exe')))
-  let pw;try{pw=require('playwright')}catch{pw=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'))}
+  let pw;try{pw=require('playwright')}catch{console.error('Playwright dev tool is required for GUI checks. Install it first: npm install --no-save --package-lock=false playwright');process.exit(2)}
   browser=await pw.chromium.connectOverCDP('http://127.0.0.1:'+port);const page=browser.contexts().flatMap(c=>c.pages())[0];await page.waitForFunction(()=>window.kamucl);await page.evaluate(()=>window.kamucl.send('window:close'))
   await browser.close();browser=null;for(let i=0;i<150&&application.exitCode===null;i++)await delay(100);assert.equal(application.exitCode,0);await delay(1000)
   passed('A running launcher blocks uninstall without deleting data or unregistering the program')

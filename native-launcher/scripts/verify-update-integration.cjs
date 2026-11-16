@@ -1,7 +1,7 @@
 // Uses the locally signed real release ZIP, an isolated old app copy and a
 // build-time transport fixture. No test hooks or alternate keys enter the app.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict'),net=require('node:net'),{Readable}=require('node:stream'),{spawn,execFileSync}=require('node:child_process'),{build}=require('esbuild'),Zip=require('adm-zip')
-let pw;try{pw=require('playwright')}catch{pw=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'))}
+let pw;try{pw=require('playwright')}catch{console.error('Playwright dev tool is required for GUI checks. Install it first: npm install --no-save --package-lock=false playwright');process.exit(2)}
 const root=path.resolve(__dirname,'../..'),qa=path.join(root,'.qa/update-integration',crypto.randomUUID()),data=path.join(qa,'profile'),target=path.join(qa,'app'),game=path.join(target,'games'),release=path.join(root,'native-launcher/release'),trust=require('../../src/shared/nativeUpdateTrust.json'),report={qa,passed:[],ok:false},hash=b=>crypto.createHash('sha256').update(b).digest('hex'),delay=ms=>new Promise(r=>setTimeout(r,ms))
 const arg=process.argv.indexOf('--baseline'),baseline=arg>=0?path.resolve(process.argv[arg+1]):path.join(root,'.qa/memory-optimization/baseline')
 const snapshot=()=>Object.fromEntries(['accounts.json','settings.json','consent.json'].map(file=>{const full=path.join(process.env.APPDATA,'ZeroDistance-Native',file);return[file,fs.existsSync(full)?hash(fs.readFileSync(full)):null]}))

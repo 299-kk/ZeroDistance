@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),net=require('node:net'),assert=require('node:assert/strict'),{spawn,execFileSync}=require('node:child_process')
-let pw;try{pw=require('playwright')}catch{pw=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'))}
+let pw;try{pw=require('playwright')}catch{console.error('Playwright dev tool is required for GUI checks. Install it first: npm install --no-save --package-lock=false playwright');process.exit(2)}
 const root=path.resolve(__dirname,'../..'),exe=path.join(root,'native-launcher/out/ZeroDistance.exe'),qa=path.join(root,'.qa/low-memory',crypto.randomUUID()),data=path.join(qa,'profile'),delay=ms=>new Promise(r=>setTimeout(r,ms)),report={qa,passed:[],memory:{},ok:false}
 async function until(fn,label,ms=45000){const end=Date.now()+ms;while(Date.now()<end){const value=await fn();if(value)return value;await delay(100)}throw Error('Timeout: '+label)}
 async function run(){

@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict'),net=require('node:net'),{spawn,execFileSync}=require('node:child_process'),Zip=require('adm-zip')
-let pw;try{pw=require('playwright')}catch{pw=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'))}
+let pw;try{pw=require('playwright')}catch{console.error('Playwright dev tool is required for GUI checks. Install it first: npm install --no-save --package-lock=false playwright');process.exit(2)}
 const root=path.resolve(__dirname,'../..'),qa=path.join(root,'.qa/startup-regression',crypto.randomUUID()),data=path.join(qa,'profile'),current=path.join(root,'native-launcher/out/ZeroDistance.exe'),oldDir=path.join(qa,'previous'),delay=ms=>new Promise(r=>setTimeout(r,ms)),runs=[],report={qa,passed:[]}
 async function until(check,label,timeout=30000){const end=Date.now()+timeout;while(Date.now()<end){const value=await check();if(value)return value;await delay(30)}throw Error('Timeout: '+label)}
 async function launch(exe,full=false){

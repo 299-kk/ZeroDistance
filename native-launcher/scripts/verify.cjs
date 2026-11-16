@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),net=require('node:net'),assert=require('node:assert/strict'),{spawn,execFileSync}=require('node:child_process'),sharp=require('sharp')
-let playwright;try{playwright=require('playwright')}catch{playwright=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'))}
+let playwright;try{playwright=require('playwright')}catch{console.error('Playwright dev tool is required for GUI checks. Install it first: npm install --no-save --package-lock=false playwright');process.exit(2)}
 const root=path.resolve(__dirname,'../..'),project=path.join(root,'native-launcher'),delay=ms=>new Promise(r=>setTimeout(r,ms)),hash=b=>crypto.createHash('sha256').update(b).digest('hex')
 async function until(check,label,ms=30000){const end=Date.now()+ms;while(Date.now()<end){const value=await check();if(value)return value;await delay(120)}throw Error('Timeout: '+label)}
 const snapshot=()=>Object.fromEntries(['settings.json','accounts.json','consent.json'].map(n=>{const file=path.join(process.env.APPDATA,'ZeroDistance',n);return[n,fs.existsSync(file)?hash(fs.readFileSync(file)):null]}))

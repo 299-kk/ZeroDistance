@@ -18,7 +18,7 @@ async function run(){
   try{
    if(trace){
     await until(async()=>{try{return(await fetch('http://127.0.0.1:45981/json/version')).ok}catch{return false}},'CDP')
-    let pw;try{pw=require('playwright')}catch{pw=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'))}
+    let pw;try{pw=require('playwright')}catch{console.error('Playwright dev tool is required for GUI checks. Install it first: npm install --no-save --package-lock=false playwright');process.exit(2)}
     browser=await pw.chromium.connectOverCDP('http://127.0.0.1:45981');page=await until(()=>browser.contexts().flatMap(c=>c.pages()).find(p=>p.url().endsWith('/index.html')),'production page')
    }
    const signal=await until(()=>{assert.equal(child.exitCode,null);return fs.readdirSync(state.data).find(n=>!before.has(n)&&/^startup-.*\.control\.finished$/.test(n))},'visible startup and usable renderer')

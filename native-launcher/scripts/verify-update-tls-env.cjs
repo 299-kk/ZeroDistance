@@ -1,7 +1,7 @@
 // The installed host must not allow an inherited Node environment variable to
 // disable certificate verification in its private updater backend.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),https=require('node:https'),net=require('node:net'),assert=require('node:assert/strict'),{spawn,execFileSync}=require('node:child_process')
-let pw;try{pw=require('playwright')}catch{pw=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'))}
+let pw;try{pw=require('playwright')}catch{console.error('Playwright dev tool is required for GUI checks. Install it first: npm install --no-save --package-lock=false playwright');process.exit(2)}
 const root=path.resolve(__dirname,'../..'),qa=path.join(root,'.qa/update-tls-env',crypto.randomUUID()),data=path.join(qa,'profile'),exe=path.join(root,'native-launcher/out/ZeroDistance.exe'),delay=ms=>new Promise(r=>setTimeout(r,ms)),report={qa,ok:false}
 async function until(fn,label){for(let n=0;n<450;n++){const value=await fn();if(value)return value;await delay(100)}throw Error('Timeout: '+label)}
 async function run(){

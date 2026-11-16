@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto'),net=require('node:net'),{spawn,execFileSync}=require('node:child_process'),sharp=require('sharp')
-let pw;try{pw=require('playwright')}catch{pw=require(path.join(process.env.USERPROFILE,'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'))}
+let pw;try{pw=require('playwright')}catch{console.error('Playwright dev tool is required for GUI checks. Install it first: npm install --no-save --package-lock=false playwright');process.exit(2)}
 const root=path.resolve(__dirname,'../..'),delay=ms=>new Promise(r=>setTimeout(r,ms))
 async function until(fn,label){for(let i=0;i<300;i++){const value=await fn();if(value)return value;await delay(100)}throw Error(label)}
 async function run(){
